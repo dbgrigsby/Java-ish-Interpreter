@@ -1,0 +1,13 @@
+# Created by https://www.gitignore.io/api/scheme
+
+### Scheme ###
+*.ss~
+*.ss#*
+.#*.ss
+
+*.scm~
+*.scm#*
+.#*.scm
+
+
+# End of https://www.gitignore.io/api/scheme
