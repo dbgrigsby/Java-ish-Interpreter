@@ -526,7 +526,7 @@
 (define G_declared?
   (lambda (variable_name state)
     (cond
-      ((null? state) (error "State is empty"))
+      ((null? state) #f)
       ((null? (car state)) #f)
       ((eq? (get_state_variable_head state) variable_name) #t)
       (else (G_declared? variable_name (get_tail_state state))))))
