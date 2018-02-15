@@ -161,9 +161,14 @@
 
 ; Must check if value is variable or not
 ; Reasoning: If the value of a variable is another variable, we need to recur until we find a value
+; Precondition: Can a variable have a null value? I am assuming yes (for now)
+; Precondition: There can never be a recurisve state (e.g. ((x y) (y x))) because this will be caught beforehand
 (define initialize_var
   (lambda (name value state)
-    (G_push_state name value state)))
+    (cond
+      ((or (number? value) (null? value)) (G_push_state name value state))
+      ((not (G_declared? value state)) (error "Initialized variable value is an undeclared variable"))
+      (else (initialize_var name (get_value_from_pair (G_value_lookup value state)) state)))))
 ; End of section 
 
 
