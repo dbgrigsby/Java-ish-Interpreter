@@ -11,15 +11,50 @@
     (cond
       ((null? program) (error "No program contents"))
       ((not (list? program)) (error "Invalid program syntax"))
-      ((pair? (car program))  (evaluate_pair (car program)))
+      ((and (pair? (car program)) (eq? (caar program) `return))  state)
+      ((pair? (car program))  (evaluate (cdr program) (evaluate_pair (car program) state)))
       (else (error "Invalid program syntax")))))
 
-
+; Returns state updated after evaluating pair
 (define evaluate_pair
-  (lambda (pair)
+  (lambda (pair state)
     (cond
       ((null? pair) (error "Not a pair"))
-      ((eq? `return (car pair)) (G_eval_atomic_statement (cadr pair) `())))))
+      ((eq? 'var (car pair)) (evaluate_var pair state))
+      (else #f)))) ;; TODO
+
+; Returns updated state after a declaration or initialization
+(define evaluate_var
+  (lambda (pair state)
+    (cond
+      ((null? (cdr pair)) (error "Nothing after the var"))
+      ((declare? (cdr pair)) (declare_var (cadr pair) state))
+      ((initialize? (cdr pair)) (initialize_var (cadr pair) (caddr pair) state))
+      (else (error "Not a declare or assign")))))
+
+; Is statement in form of (var variablename)
+(define declare?
+  (lambda (statement)
+    (cond
+      ((null? (cdr statement)) #t)
+      (else #f))))
+
+; Is statement in form of (var variablename expr)
+; TODO: Did not check length
+(define initialize?
+  (lambda (statement)
+    (cond
+      ((not (null? (cdr statement))) #t)
+      (else #f))))
+
+(define declare_var
+  (lambda (name state)
+    (G_push_state name `() state)))
+
+; Must check if value is variable or not
+(define initialize_var
+  (lambda (name value state)
+    (G_push_state name value state)))
 
 
 
