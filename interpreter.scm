@@ -72,10 +72,6 @@
 
 
 
-
-
-
-
 ; if statement section
 ; currently does nothing as placeholder
 (define G_evaluate_if_statement
@@ -183,7 +179,6 @@
 (define initialize_var
   (lambda (name value state)
     (G_push_state name value state)))
-; End of section 
 
 
 
@@ -206,6 +201,9 @@
 ; atomic statements are statements that are valid inside of a conditional statement/assignment statement or on their own
 ; at the moment, this is just assign statements and expressions
 ; returns a pair of (value, state)
+; (e.g. (> x (+ y 1)) is an atomic statement)
+; (e.g. (== 3 (= x (+ x 1)) is an atomic statement)
+; Atomic statements can be put 
 (define G_eval_atomic_statement
   (lambda (arglist state)
     (cond
@@ -226,6 +224,8 @@
 (define G_atomic_statement?
   (lambda (arglist state)
     (cond
+      ((single_atom? arglist) #t)
+      ((single_value_list? arglist) #t)
       ((G_expr? arglist) #t)
       ((G_assign? arglist) #t)
       (else #f))))
@@ -251,7 +251,6 @@
     (car args)))
 
 
-;
 
 
 
@@ -276,6 +275,7 @@
 ; eval_assign section
 ; this function evaluates assignment statements
 ; will returns value state pair
+; (e.g. (= x 1) will return (1 (updated_state)))
 (define G_eval_assign
   (lambda (arglist state)
     (cond
@@ -296,7 +296,6 @@
 
 
 
-; 
 
 
 
@@ -320,7 +319,6 @@
 ; this function evaluates all expressions
 ; expressions are defined as built in math, boolean, or comparison operators
 ; expressions cover the scope of math expressions and boolean expressions (or conditional statements)
-    
 (define G_eval_expr
   (lambda (arglist state)
     (cond
@@ -526,14 +524,13 @@
 
 
 
-;
 ; state_interface section
 ; this function takes values (integers, strings, variables, expressions, ...) and returns their actual value
 ; for now it only handles int and bolean literals and expressions of the two
 (define G_value_lookup
   (lambda (value state)
     (cond
-      ;if its an expression, evaluate to get value
+      ; if its an expression, evaluate to get value
       ((list? value) (G_eval_atomic_statement value state))
       ((integer? value) (cons value (list state)))
       ((boolean? value) (cons value (list state)))
@@ -567,14 +564,14 @@
 (define G_push_state
   (lambda (variable value state)
     (cond
-      ; If the value is a number, push it to the state
-      ((or (number? value) (null? value)) (push_variable_and_number_state variable value state))
+      ; If the value is a number, null, or boolean, push to the state
+      ((or (number? value) (null? value) (boolean? value)) (push_variable_as_literal-state variable value state))
       ; If the value is not a number, push the value of this variable to the state
-      (else (push_variable_and_variable_state variable value state)))))
+      (else (push_variable_as_variable-state variable value state)))))
 
 ; Pushes a variable and a number to the state, or updates the state if the variable is there
 ; Returns the updated state
-(define push_variable_and_number_state
+(define push_variable_as_literal-state
   (lambda (variable number state)
     (cond
       ; If the state is empty, push to the state
@@ -590,18 +587,18 @@
       ; If the variable head doesn't equal the variable we are trying to push, keep searching for it
       (else (append_state
              (get_head_state state)
-             (push_variable_and_number_state variable number (get_tail_state state)))))))
+             (push_variable_as_literal-state variable number (get_tail_state state)))))))
 
 
 ; Pushes a variable and the value of the variable's value to the state, or updates the state if the variable is there
 ; Precondition: Value is not null
 ; Returns the updated state
-(define push_variable_and_variable_state
+(define push_variable_as_variable-state
   (lambda (variable value state)
     (cond
       ((not (G_declared? value state)) (error "Initialized variable value is an undeclared variable"))
       (else
-       (push_variable_and_number_state variable (get_value_from_pair (G_value_lookup value state)) state)))))
+       (push_variable_as_variable-state variable (get_value_from_pair (G_value_lookup value state)) state)))))
       
 
 ; appends a head state to a tail state
@@ -652,7 +649,7 @@
      (list (get_state_value_head state)))))
 
 ; this function takes values (integers, strings, variables, ...) and returns their type
-; for now it only handles int and boolean literals
+; for now it only handles any atomic statement
 (define G_type_lookup
   (lambda (value state)
     (cond
