@@ -9,6 +9,8 @@
 (define evaluate_parse_tree
   (lambda (program state)
     (cond
+      ; not all programs/ segments must end in return
+      ; empty list should return the state (ie: at the end of an if statement's statements)
       ((null? program) state)
       ((not (list? program)) (error "Invalid program syntax"))
       ; temporary work in
