@@ -348,13 +348,15 @@
     (#f)))
 
 ; looks up the value of a variable in the state
-; currently does nothing as a placeholder
 (define variable_value_lookup
   (lambda (variable state)
-    (#f)))
+    (cond
+      ((null? (car state)) (error "Variable not found in state"))
+      ((eq? (caar state) variable) (caadr state))
+      (else (variable_value_lookup variable (list (cdar state) (cdadr state)))))))
 
 ; this function takes values (integers, strings, variables, ...) and returns their type
-; for now it only handles int and bolean literals
+; for now it only handles int and boolean literals
 (define G_type_lookup
   (lambda (value state)
     (cond
@@ -364,7 +366,7 @@
       (else (error "unsupported type lookup")))))
 
 ; looks up the type of a variable in the state
-; currently does nothing as a placeholder
+; currently does nothing as a placeholder, as we don't have types yet
 (define variable_type_lookup
   (lambda (variable state)
     (#f)))
