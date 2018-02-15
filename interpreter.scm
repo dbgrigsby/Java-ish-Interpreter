@@ -23,10 +23,34 @@
       ((eq? 'var (car arglist)) (G_evaluate_var_declare_statement arglist state))
       ((eq? 'while (car arglist)) (G_evaluate_while_statement arglist state))
       ((eq? 'if (car arglist)) (G_evaluate_if_statement arglist state))
+      ((eq? 'return (car arglist)) (G_evaluate_return_statement argist state))
       (else (G_eval_atomic_statement arglist state)))))
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; return statement section
+; currently returns both state and value, should just return value
+(define G_evaluate_if_statement
+  (lambda (arglist state)
+    (G_eval_atomic_statement (rest_of_return_statement arglist) state)))
+
+(define rest_of_return_statement
+  (lambda (arglist)
+    (cdr arglist)))
 
 
 
@@ -104,10 +128,11 @@
   (lambda (arglist state)
     (cond
       ((null? (cdr arglist)) (error "Nothing after the var"))
-      ((G_declared? (get_var_name_from_declare_args arglist)) (error "variable already declared"))
+      ((G_declared? (get_var_name_from_declare_args arglist) state)
+       (error "variable already declared"))
       ((only_declare? arglist) (declare_var (get_var_name_from_declare_args arglist) state))
       (else (initialize_var (get_var_name_from_declare_args arglist)
-                            (G_eval_atomic_statement (truncate_var_name_=_from_declare arglist)) state)))))
+                            (get_value_from_pair (G_eval_atomic_statement (truncate_var_name_from_declare arglist) state)) state)))))
 
 (define only_declare?
   (lambda (arglist)
@@ -117,9 +142,9 @@
   (lambda (arglist)
     (cadr arglist)))
 
-(define truncate_var_name_=_from_declare
+(define truncate_var_name_from_declare
   (lambda (arglist)
-    (cdr arglist)))
+    (cddr arglist)))
 
 (define declare_var
   (lambda (name state)
@@ -155,7 +180,7 @@
 (define G_eval_atomic_statement
   (lambda (arglist state)
     (cond
-      ((G_single_value? arglist) (G_value_lookup arglist state))
+      ((G_single_value? arglist) (G_value_lookup (car arglist) state))
       ((G_expr? arglist) (G_eval_expr arglist state))
       ((G_assign? arglist) (G_eval_assign arglist state))
       (else (error "not a valid atomic statement")))))
@@ -493,7 +518,7 @@
       ((null? state) (error "State is empty"))
       ((null? (car state)) #f)
       ((eq? (get_state_variable_head state) variable_name) #t)
-      (else (variable_value_lookup variable
+      (else (G_declared? variable_name
                                    (list (get_state_variable_tail state)
                                          (get_state_value_tail state)))))))
 
