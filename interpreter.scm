@@ -4,48 +4,121 @@
 
 (define interpret
   (lambda (filename)
-    (evaluate (parser filename) `(()()) )))
+    (evaluate_parse_tree (parser filename) `(()()) )))
 
-(define evaluate
+(define evaluate_parse_tree
   (lambda (program state)
     (cond
       ((null? program) (error "No program contents"))
       ((not (list? program)) (error "Invalid program syntax"))
       ((and (pair? (car program)) (eq? (caar program) `return))  state)
-      ((pair? (car program))  (evaluate (cdr program) (evaluate_pair (car program) state)))
+      ((pair? (car program))  (evaluate_parse_tree (cdr program) (evaluate_statement (car program) state)))
       (else (error "Invalid program syntax")))))
 
 ; Returns state updated after evaluating pair
-(define evaluate_pair
-  (lambda (pair state)
+(define evaluate_statement
+  (lambda (arglist state)
     (cond
-      ((null? pair) (error "Not a pair"))
-      ((eq? 'var (car pair)) (evaluate_var pair state))
-      (else #f)))) ;; TODO
+      ((null? arglist) (error "Not a statement"))
+      ((eq? 'var (car arglist)) (G_evaluate_var_declare_statement arglist state))
+      ((eq? 'while (car arglist)) (G_evaluate_while_statement arglist state))
+      ((eq? 'if (car arglist)) (G_evaluate_if_statement arglist state))
+      (else (G_eval_atomic_statement arglist state)))))
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; if statement section
+; currently does nothing as placeholder
+(define G_evaluate_if_statement
+  (lambda (arglist state)
+    (state)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; while loop section
+; currently does nothing as placeholder
+(define G_evaluate_while_statement
+  (lambda (arglist state)
+    (state)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; Variable declaration section
 ; Returns updated state after a declaration or initialization
-(define evaluate_var
-  (lambda (pair state)
+(define G_evaluate_var_declare_statement
+  (lambda (arglist state)
     (cond
-      ((null? (cdr pair)) (error "Nothing after the var"))
-      ((declare? (cdr pair)) (declare_var (cadr pair) state))
-      ((initialize? (cdr pair)) (initialize_var (cadr pair) (caddr pair) state))
-      (else (error "Not a declare or assign")))))
+      ((null? (cdr arglist)) (error "Nothing after the var"))
+      ((only_declare? arglist) (declare_var (get_var_name_from_declare_args arglist) state))
+      (else (initialize_var (get_var_name_from_declare_args arglist)
+                            (G_eval_atomic_statement (truncate_var_name_=_from_declare arglist)) state)))))
 
-; Is statement in form of (var variablename)
-(define declare?
-  (lambda (statement)
-    (cond
-      ((null? (cdr statement)) #t)
-      (else #f))))
+(define only_declare?
+  (lambda (arglist)
+    (null? (cddr arglist))))
 
-; Is statement in form of (var variablename expr)
-; TODO: Did not check length
-(define initialize?
-  (lambda (statement)
-    (cond
-      ((not (null? (cdr statement))) #t)
-      (else #f))))
+(define get_var_name_from_declare_args
+  (lambda (arglist)
+    (cadr arglist)))
+
+(define truncate_var_name_=_from_declare
+  (lambda (arglist)
+    (cdr arglist)))
 
 (define declare_var
   (lambda (name state)
@@ -55,15 +128,6 @@
 (define initialize_var
   (lambda (name value state)
     (G_push_state name value state)))
-
-
-
-
-
-
-
-
-
 ; End of section 
 
 
@@ -90,9 +154,14 @@
 (define G_eval_atomic_statement
   (lambda (arglist state)
     (cond
+      ((G_single_value? arglist) (G_value_lookup arglist state))
       ((G_expr? arglist) (G_eval_expr arglist state))
       ((G_assign? arglist) (G_eval_assign arglist state))
       (else (error "not a valid atomic statement")))))
+
+(define G_single_value?
+  (lambda (arglist)
+    (eq? (length arglist) 1)))
 
 (define G_atomic_statement?
   (lambda (arglist state)
@@ -101,15 +170,15 @@
       ((G_assign? arglist) #t)
       (else #f))))
 
-(define get_op
+(define get_op_from_expr
   (lambda (arglist)
     (car arglist)))
 
-(define get_arg1
+(define get_arg1_from_expr
   (lambda (arglist)
     (cadr arglist)))
 
-(define get_arg2
+(define get_arg2_from_expr
   (lambda (arglist)
     (caddr arglist)))
 
@@ -146,27 +215,26 @@
 
 ; eval_assign section
 ; this function evaluates assignment statements
-; currently does nothing
-; will returns new state and value pair
+; will returns value state pair
 (define G_eval_assign
   (lambda (arglist state)
     (cond
-      ((not (G_assign? (get_op arglist))) (error "not an assignment"))
-      ((G_declared? (get_arg1 arglist))
+      ((not (G_assign? arglist)) (error "not an assignment"))
+      ((G_declared? (get_arg1_from_expr arglist) state)
        (cons
-        (G_value_lookup (get_arg1 arglist)
-                              (G_push_state (get_arg1 arglist)
-                                            (G_eval_atomic_statement (get_arg2 arglist) state)
-                                            (G_type_lookup (get_arg2 arglist) state)))
-        (list (G_push_state (get_arg1 arglist)
-                     (G_eval_atomic_statement (get_arg2 arglist) state)
-                     (G_type_lookup (get_arg2 arglist) state)))))
+        (get_value_from_pair (G_value_lookup (get_arg1_from_expr arglist)
+                              (G_push_state (get_arg1_from_expr arglist)
+                                            (get_value_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state))
+                                            (get_state_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state)))))
+        (list (G_push_state (get_arg1_from_expr arglist)
+                            (get_value_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state))
+                            (get_state_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state))))))
       (else (error "variable undeclared")))))
 
 (define G_assign?
   (lambda (arglist)
     (cond
-      ((eq? (get_op arglist) '=) #t)
+      ((eq? (get_op_from_expr arglist) '=) #t)
       (else #f))))
 
 
@@ -201,16 +269,16 @@
   (lambda (arglist state)
     (cond
       ((not (G_expr? arglist)) (error "given invalid expression operation"))
-      ((eq? (length arglist) 2) (eval_expr_uni (get_op arglist) (get_arg1 arglist) state))
-      ((eq? (length arglist) 3) (eval_expr_multi (get_op arglist) (get_arg1 arglist) (get_arg2 arglist) state))
+      ((eq? (length arglist) 2) (eval_expr_uni (get_op_from_expr arglist) (get_arg1_from_expr arglist) state))
+      ((eq? (length arglist) 3) (eval_expr_multi (get_op_from_expr arglist) (get_arg1_from_expr arglist) (get_arg2_from_expr arglist) state))
       (else (error "invalid number of arguments")))))
 
 (define G_expr?
   (lambda (arglist)
     (cond
-      ((math_expr? (get_op arglist)) #t)
-      ((boolean_expr? (get_op arglist)) #t)
-      ((compare_expr? (get_op arglist)) #t)
+      ((math_expr? (get_op_from_expr arglist)) #t)
+      ((boolean_expr? (get_op_from_expr arglist)) #t)
+      ((compare_expr? (get_op_from_expr arglist)) #t)
       (else #f))))
 
 (define math_expr?
@@ -411,7 +479,7 @@
       ((list? value) (G_eval_atomic_statement value state))
       ((integer? value) (cons value (list state)))
       ((boolean? value) (cons value (list state)))
-      ((G_declared? value) (cons (variable_value_lookup value state) (list state)))
+      ((G_initialized? value state) (cons (variable_value_lookup value state) (list state)))
       (else (error "unsupported value lookup")))))
 
 
@@ -423,10 +491,18 @@
     (cond
       ((null? state) (error "State is empty"))
       ((null? (car state)) #f)
-      ((eq? (get_state_variable_head state) variable) #t)
+      ((eq? (get_state_variable_head state) variable_name) #t)
       (else (variable_value_lookup variable
                                    (list (get_state_variable_tail state)
                                          (get_state_value_tail state)))))))
+
+;tests whether variable is declared and initialized
+(define G_initialized?
+  (lambda (variable_name state)
+    (cond
+      ((not (G_declared? variable_name state)) #f)
+      ((null? (variable_value_lookup variable_name state)) #f)
+      (else #t))))
 
 ; adds variable to state or over-writes it
 ; returns the new state
@@ -497,8 +573,8 @@
       ((list? value) (G_type_lookup (get_value_from_pair (G_value_lookup value state)) state))
       ((integer? value) 'integer)
       ((boolean? value) 'boolean)
-      ((G_declared? value) (variable_type_lookup value state))
-      (else (error "unsupported type lookup")))))
+      ((G_initialized? value state) (variable_type_lookup value state))
+      (else (error "uninitialized variable or unsupported type")))))
 
 ; looks up the type of a variable in the state
 (define variable_type_lookup
