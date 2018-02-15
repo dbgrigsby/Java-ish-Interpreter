@@ -18,16 +18,23 @@
       ((pair? (car program))  (evaluate_parse_tree (cdr program) (evaluate_statement (car program) state)))
       (else (error "Invalid program syntax")))))
 
+
 ; Returns state updated after evaluating pair
 (define evaluate_statement
   (lambda (arglist state)
     (cond
       ((null? arglist) (error "Not a statement"))
-      ((eq? 'var (car arglist)) (G_evaluate_var_declare_statement arglist state))
-      ((eq? 'while (car arglist)) (G_evaluate_while_statement arglist state))
-      ((eq? 'if (car arglist)) (G_evaluate_if_statement arglist state))
+      ((eq? 'var (get_upcoming_statement_name arglist)) (G_evaluate_var_declare_statement arglist state))
+      ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement arglist state))
+      ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement arglist state))
       (else (G_eval_atomic_statement arglist state)))))
 
+; Returns the type of the upcoming statement in an arglist
+; (e.g. (var x (+ 1 2)) yields 'var)
+(define get_upcoming_statement_name
+  (lambda (arglist)
+    (car arglist)))
+  
 
 
 
