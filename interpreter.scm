@@ -520,9 +520,7 @@
       ((null? state) (error "State is empty"))
       ((null? (car state)) #f)
       ((eq? (get_state_variable_head state) variable_name) #t)
-      (else (G_declared? variable_name
-                                   (list (get_state_variable_tail state)
-                                         (get_state_value_tail state)))))))
+      (else (G_declared? variable_name (get_tail_state state))))))
 
 ;tests whether variable is declared and initialized
 (define G_initialized?
