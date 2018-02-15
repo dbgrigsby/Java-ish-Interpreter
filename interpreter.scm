@@ -1,3 +1,41 @@
+(load "simpleParser.scm")
+; Interpretation loop section
+
+
+(define interpret
+  (lambda (filename)
+    (evaluate (parser filename) `(()()) )))
+
+(define evaluate
+  (lambda (program state)
+    (cond
+      ((null? program) (error "No program contents"))
+      ((not (list? program)) (error "Invalid program syntax"))
+      ((pair? (car program))  (evaluate_pair (car program)))
+      (else (error "Invalid program syntax")))))
+
+
+(define evaluate_pair
+  (lambda (pair)
+    (cond
+      ((null? pair) (error "Not a pair"))
+      ((eq? `return (car pair)) (G_eval_atomic_statement (cadr pair) `())))))
+
+
+
+
+
+
+
+
+
+; End of section 
+
+
+
+
+
+
 ; atomic statement evaluator
 ; atomic statements are statements that are valid inside of a conditional statement/assignment statement or on their own
 ; at the moment, this is just assign statements and expressions
@@ -269,7 +307,7 @@
       ((eq? op '-) -)
       ((and (eq? op '/) is_int) quotient)
       ((eq? op '/) /)
-      ((and (eq? op '%) is_int) %)
+      ((and (eq? op '%) is_int) modulo)
       ((eq? op '%) (error "modulo % only works on integers"))
       (else (error "invalid math operator")))))
 
