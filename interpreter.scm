@@ -104,6 +104,7 @@
   (lambda (arglist state)
     (cond
       ((null? (cdr arglist)) (error "Nothing after the var"))
+      ((G_declared? (get_var_name_from_declare_args arglist)) (error "variable already declared"))
       ((only_declare? arglist) (declare_var (get_var_name_from_declare_args arglist) state))
       (else (initialize_var (get_var_name_from_declare_args arglist)
                             (G_eval_atomic_statement (truncate_var_name_=_from_declare arglist)) state)))))
