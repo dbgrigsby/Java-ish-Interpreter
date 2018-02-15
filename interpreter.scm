@@ -160,6 +160,7 @@
     (G_push_state name `() state)))
 
 ; Must check if value is variable or not
+; Reasoning: If the value of a variable is another variable, we need to recur until we find a value
 (define initialize_var
   (lambda (name value state)
     (G_push_state name value state)))
