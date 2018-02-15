@@ -1,22 +1,3 @@
-;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ; atomic statement evaluator
 ; atomic statements are statements that are valid inside of a conditional statement/assignment statement or on their own
 ; at the moment, this is just assign statements and expressions
