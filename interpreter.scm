@@ -9,9 +9,9 @@
 (define evaluate_parse_tree
   (lambda (program state)
     (cond
-      ((null? program) (error "No program contents"))
+      ((null? program) state)
       ((not (list? program)) (error "Invalid program syntax"))
-      ;temporary work in
+      ; temporary work in
       ((eq? 'return (car (car program))) (G_evaluate_return_statement (car program) state))
       ((pair? (car program))  (evaluate_parse_tree (cdr program) (evaluate_statement (car program) state)))
       (else (error "Invalid program syntax")))))
