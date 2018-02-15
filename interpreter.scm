@@ -11,7 +11,8 @@
     (cond
       ((null? program) (error "No program contents"))
       ((not (list? program)) (error "Invalid program syntax"))
-      ((and (pair? (car program)) (eq? (caar program) `return))  state)
+      ;temporary work in
+      ((eq? 'return (car (car program))) (G_evaluate_return_statement (car program) state))
       ((pair? (car program))  (evaluate_parse_tree (cdr program) (evaluate_statement (car program) state)))
       (else (error "Invalid program syntax")))))
 
@@ -23,7 +24,6 @@
       ((eq? 'var (car arglist)) (G_evaluate_var_declare_statement arglist state))
       ((eq? 'while (car arglist)) (G_evaluate_while_statement arglist state))
       ((eq? 'if (car arglist)) (G_evaluate_if_statement arglist state))
-      ((eq? 'return (car arglist)) (G_evaluate_return_statement argist state))
       (else (G_eval_atomic_statement arglist state)))))
 
 
@@ -44,7 +44,7 @@
 
 ; return statement section
 ; currently returns both state and value, should just return value
-(define G_evaluate_if_statement
+(define G_evaluate_return_statement
   (lambda (arglist state)
     (G_eval_atomic_statement (rest_of_return_statement arglist) state)))
 
