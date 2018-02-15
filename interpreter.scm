@@ -71,6 +71,18 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 ; atomic statement evaluator
 ; atomic statements are statements that are valid inside of a conditional statement/assignment statement or on their own
 ; at the moment, this is just assign statements and expressions
@@ -404,13 +416,17 @@
 
 
 ; tests whether variable is declared
-; currently does nothing as a placeholder
-
 ; this function will need to check inputs and error
 ; as it will recieve bogus inputs
 (define G_declared?
   (lambda (variable_name state)
-    (#f)))
+    (cond
+      ((null? state) (error "State is empty"))
+      ((null? (car state)) #f)
+      ((eq? (get_state_variable_head state) variable) #t)
+      (else (variable_value_lookup variable
+                                   (list (get_state_variable_tail state)
+                                         (get_state_value_tail state)))))))
 
 ; adds variable to state or over-writes it
 ; returns the new state
@@ -481,10 +497,10 @@
       ((list? value) (G_type_lookup (get_value_from_pair (G_value_lookup value state)) state))
       ((integer? value) 'integer)
       ((boolean? value) 'boolean)
+      ((G_declared? value) (variable_type_lookup value state))
       (else (error "unsupported type lookup")))))
 
 ; looks up the type of a variable in the state
-; currently does nothing as a placeholder, as we don't have types yet
 (define variable_type_lookup
   (lambda (variable state)
-    (#f)))
+    (G_type_lookup (variable_value_lookup variable state) state)))
