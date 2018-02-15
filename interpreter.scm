@@ -295,7 +295,6 @@
 
 
 
-;
 
 
 
@@ -340,20 +339,66 @@
   (lambda (variable_name state)
     (#f)))
 
-; adds variable to state or over_writes it
-; currently left un-defined
-; should return the new state
+; adds variable to state or over-writes it
+; returns the new state
 (define G_push_state
-  (lambda (variable value type)
-    (#f)))
+  (lambda (variable value state)
+    (cond
+      ((null? state) (list (list variable) (list value)))
+      ((null? (car state)) (list (list variable) (list value)))
+      ((eq? (get_state_variable_head state) variable)
+       (list (cons variable (get_state_variable_tail state))
+             (cons value (get_state_value_tail state))))
+      (else (append_state
+             (get_head_state state)
+             (G_push_state variable value (get_tail_state state)))))))
+
+; appends a head state to a tail state
+; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))
+; yields ((a b c d) (1 2 3 4)))
+(define append_state
+  (lambda (head_state tail_state)
+    (list
+     (append (list (get_state_variable_head head_state)) (car tail_state))
+     (append (list (get_state_value_head head_state)) (cadr tail_state)))))
 
 ; looks up the value of a variable in the state
+; returns the value of the variable or an error if the variable was not found
 (define variable_value_lookup
   (lambda (variable state)
     (cond
+      ((null? state) (error "State is empty"))
       ((null? (car state)) (error "Variable not found in state"))
-      ((eq? (caar state) variable) (caadr state))
-      (else (variable_value_lookup variable (list (cdar state) (cdadr state)))))))
+      ((eq? (get_state_variable_head state) variable) (get_state_value_head state))
+      (else (variable_value_lookup variable
+                                   (list (get_state_variable_tail state)
+                                         (get_state_value_tail state)))))))
+
+(define get_state_variable_head
+  (lambda (state)
+    (caar state)))
+
+(define get_state_variable_tail
+  (lambda (state)
+    (cdar state)))
+
+(define get_state_value_head
+  (lambda (state)
+    (caadr state)))
+
+(define get_state_value_tail
+  (lambda (state)
+    (cdadr state)))
+
+(define get_tail_state
+  (lambda (state)
+    (list (get_state_variable_tail state) (get_state_value_tail state))))
+
+(define get_head_state
+  (lambda (state)
+    (list
+     (list (get_state_variable_head state))
+     (list (get_state_value_head state)))))
 
 ; this function takes values (integers, strings, variables, ...) and returns their type
 ; for now it only handles int and boolean literals
