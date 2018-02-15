@@ -159,16 +159,10 @@
   (lambda (name state)
     (G_push_state name `() state)))
 
-; Must check if value is variable or not
-; Reasoning: If the value of a variable is another variable, we need to recur until we find a value
-; Precondition: Can a variable have a null value? I am assuming yes (for now)
-; Precondition: There can never be a recurisve state (e.g. ((x y) (y x))) because this will be caught beforehand
+; Pushes the initializes the variable to the state
 (define initialize_var
   (lambda (name value state)
-    (cond
-      ((or (number? value) (null? value)) (G_push_state name value state))
-      ((not (G_declared? value state)) (error "Initialized variable value is an undeclared variable"))
-      (else (initialize_var name (get_value_from_pair (G_value_lookup value state)) state)))))
+    (G_push_state name value state)))
 ; End of section 
 
 
@@ -402,7 +396,9 @@
 (define eval_compare_expr_multi
   (lambda (op arg1 arg2 state)
     (cons
-     ((compare_operator_to_function_multi op) (G_value_lookup arg1 state) (G_value_lookup arg2 state))
+     ((compare_operator_to_function_multi op)
+      (get_value_from_pair (G_value_lookup arg1 state))
+      (get_value_from_pair (G_value_lookup arg2 state)))
      (list (get_state_from_pair (G_value_lookup arg1 (get_state_from_pair (G_value_lookup arg2 state))))))))
 
 ; this function evaluates booleans
@@ -543,19 +539,49 @@
       ((null? (variable_value_lookup variable_name state)) #f)
       (else #t))))
 
-; adds variable to state or over-writes it
+; adds variable and its value to state or over-writes it
+; If the value is a variable, the value of this variable is found and pushed to the state
+; (e.g. if we are pushing (x y) and y = 3, we push (x 3) to the state
 ; returns the new state
 (define G_push_state
   (lambda (variable value state)
     (cond
-      ((null? state) (list (list variable) (list value)))
-      ((null? (car state)) (list (list variable) (list value)))
+      ; If the value is a number, push it to the state
+      ((or (number? value) (null? value)) (push_variable_and_number_state variable value state))
+      ; If the value is not a number, push the value of this variable to the state
+      (else (push_variable_and_variable_state variable value state)))))
+
+; Pushes a variable and a number to the state, or updates the state if the variable is there
+; Returns the updated state
+(define push_variable_and_number_state
+  (lambda (variable number state)
+    (cond
+      ; If the state is empty, push to the state
+      ((null? state) (list (list variable) (list number)))
+      ((null? (car state)) (list (list variable) (list number)))
+
+      ; If the variable head of the state equals the variable we are tryinig to push,
+      ; Update the variable's value
       ((eq? (get_state_variable_head state) variable)
        (list (cons variable (get_state_variable_tail state))
-             (cons value (get_state_value_tail state))))
+             (cons number (get_state_value_tail state))))
+
+      ; If the variable head doesn't equal the variable we are trying to push, keep searching for it
       (else (append_state
              (get_head_state state)
-             (G_push_state variable value (get_tail_state state)))))))
+             (push_variable_and_number_state variable number (get_tail_state state)))))))
+
+
+; Pushes a variable and the value of the variable's value to the state, or updates the state if the variable is there
+; Precondition: Value is not null
+; Returns the updated state
+(define push_variable_and_variable_state
+  (lambda (variable value state)
+    (cond
+      ((not (G_declared? value state)) (error "Initialized variable value is an undeclared variable"))
+      (else
+       (push_variable_and_number_state variable (get_value_from_pair (G_value_lookup value state)) state)))))
+      
 
 ; appends a head state to a tail state
 ; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))
