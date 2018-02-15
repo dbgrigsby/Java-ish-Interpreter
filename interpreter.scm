@@ -27,7 +27,7 @@
       ((eq? 'var (get_upcoming_statement_name arglist)) (G_evaluate_var_declare_statement arglist state))
       ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement arglist state))
       ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement arglist state))
-      (else (G_eval_atomic_statement arglist state)))))
+      (else (get_state_from_pair (G_eval_atomic_statement arglist state))))))
 
 ; Returns the type of the upcoming statement in an arglist
 ; (e.g. (var x (+ 1 2)) yields 'var)
@@ -53,6 +53,7 @@
 
 ; return statement section
 ; currently returns both state and value, should just return value
+; returns state and value for debug purposes
 (define G_evaluate_return_statement
   (lambda (arglist state)
     (G_eval_atomic_statement (rest_of_return_statement arglist) state)))
@@ -79,10 +80,29 @@
 ; currently does nothing as placeholder
 (define G_evaluate_if_statement
   (lambda (arglist state)
-    (state)))
+    (cond
+      ((get_value_from_pair (G_eval_atomic_statement (get_if_cond arglist) state))
+       (get_state_from_pair (G_eval_atomic_statement (get_if_then arglist) (get_state_from_pair (G_eval_atomic_statement (get_if_cond arglist) state)))))
+      ((has_else? arglist) (get_state_from_pair (G_eval_atomic_statement (get_if_else arglist) (get_state_from_pair (G_eval_atomic_statement (get_if_cond arglist) state)))))
+      (else (get_state_from_pair (G_eval_atomic_statement (get_if_cond arglist) state))))))
 
+(define get_if_cond
+  (lambda (arglist)
+    (cadr arglist)))
 
+(define get_if_then
+  (lambda (arglist)
+    (caddr arglist)))
 
+(define get_if_else
+  (lambda (arglist)
+    (cond
+      ((not (has_else? arglist)) (error "no else statement"))
+      (else (cadddr arglist)))))
+
+(define has_else?
+  (lambda (arglist)
+    (pair? (cdddr arglist))))
 
 
 
@@ -189,12 +209,17 @@
 (define G_eval_atomic_statement
   (lambda (arglist state)
     (cond
-      ((G_single_value? arglist) (G_value_lookup (car arglist) state))
+      ((single_atom? arglist) (G_value_lookup arglist state))
+      ((single_value_list? arglist) (G_value_lookup (car arglist) state))
       ((G_expr? arglist) (G_eval_expr arglist state))
       ((G_assign? arglist) (G_eval_assign arglist state))
       (else (error "not a valid atomic statement")))))
 
-(define G_single_value?
+(define single_atom?
+  (lambda (arglist)
+    (not (list? arglist))))
+
+(define single_value_list?
   (lambda (arglist)
     (eq? (length arglist) 1)))
 
@@ -256,14 +281,10 @@
     (cond
       ((not (G_assign? arglist)) (error "not an assignment"))
       ((G_declared? (get_arg1_from_expr arglist) state)
-       (cons
-        (get_value_from_pair (G_value_lookup (get_arg1_from_expr arglist)
+       (G_value_lookup (get_arg1_from_expr arglist)
                               (G_push_state (get_arg1_from_expr arglist)
                                             (get_value_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state))
                                             (get_state_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state)))))
-        (list (G_push_state (get_arg1_from_expr arglist)
-                            (get_value_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state))
-                            (get_state_from_pair (G_eval_atomic_statement (get_arg2_from_expr arglist) state))))))
       (else (error "variable undeclared")))))
 
 (define G_assign?
@@ -360,7 +381,7 @@
   (lambda (op arg1 state)
     (cond
       ((eq? (G_type_lookup arg1 state) 'boolean)
-       (cons ((boolean_operator_to_function_uni op) (get_value_from_pair(G_value_lookup arg1 state)))
+       (cons ((boolean_operator_to_function_uni op) (get_value_from_pair (G_value_lookup arg1 state)))
              (list (get_state_from_pair (G_value_lookup arg1 state)))))
       (else (error "boolean operator not valid for non boolean types")))))
 
