@@ -1,33 +1,32 @@
 (load "simpleParser.scm")
 ; Interpretation loop section
 
-
 (define interpret
   (lambda (filename)
-    (evaluate_parse_tree (parser filename) `(()()) )))
+    (evaluate_parse_tree-retval_state (parser filename) `(()()) )))
 
-(define evaluate_parse_tree
+(define evaluate_parse_tree-retval_state
   (lambda (program state)
     (cond
       ; not all programs/ segments must end in return
       ; empty list should return the state (ie: at the end of an if statement's statements)
-      ((null? program) state)
+      ((null? program) (cons '() (list state)))
       ((not (list? program)) (error "Invalid program syntax"))
-      ; temporary work in
-      ((eq? 'return (car (car program))) (G_evaluate_return_statement-value_state (car program) state))
-      ((pair? (car program))  (evaluate_parse_tree (cdr program) (evaluate_statement-state (car program) state)))
+      ((not (null? (get_value_from_pair (evaluate_statement-retval_state (car program) state)))) (evaluate_statement-retval_state (car program) state))
+      ((pair? (car program))  (evaluate_parse_tree-retval_state (cdr program) (get_state_from_pair (evaluate_statement-retval_state (car program) state))))
       (else (error "Invalid program syntax")))))
 
 
 ; Returns state updated after evaluating pair
-(define evaluate_statement-state
+(define evaluate_statement-retval_state
   (lambda (arglist state)
     (cond
       ((null? arglist) (error "Not a statement"))
-      ((eq? 'var (get_upcoming_statement_name arglist)) (G_evaluate_var_declare_statement-state arglist state))
-      ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement-state arglist state))
-      ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement-state arglist state))
-      (else (get_state_from_pair (G_eval_atomic_statement-value_state arglist state))))))
+      ((eq? 'return (get_upcoming_statement_name arglist)) (G_evaluate_return_statement-retvalue_state arglist state))
+      ((eq? 'var (get_upcoming_statement_name arglist)) (cons '() (list (G_evaluate_var_declare_statement-state arglist state))))
+      ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement-retval_state arglist state))
+      ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement-retval_state arglist state))
+      (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state arglist state))))))))
 
 ; Returns the type of the upcoming statement in an arglist
 ; (e.g. (var x (+ 1 2)) yields 'var)
@@ -54,7 +53,7 @@
 ; return statement section
 ; currently returns both state and value, should just return value
 ; returns state and value for debug purposes
-(define G_evaluate_return_statement-value_state
+(define G_evaluate_return_statement-retvalue_state
   (lambda (arglist state)
     (G_eval_atomic_statement-value_state (rest_of_return_statement arglist) state)))
 
@@ -74,13 +73,17 @@
 
 ; if statement section
 ; currently does nothing as placeholder
-(define G_evaluate_if_statement-state
+(define G_evaluate_if_statement-retval_state
   (lambda (arglist state)
     (cond
       ((get_value_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))
-       (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_then arglist) (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state)))))
-      ((has_else? arglist) (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_else arglist) (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state)))))
-      (else (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))))
+       (evaluate_parse_tree-retval_state (list (get_if_then arglist))
+                                         (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))
+      ((has_else? arglist)
+       (evaluate_parse_tree-retval_state (list (get_if_else arglist))
+                                         (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))
+
+      (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))))))
 
 (define get_if_cond
   (lambda (arglist)
@@ -120,7 +123,7 @@
 ; currently does nothing as placeholder
 (define G_evaluate_while_statement-state
   (lambda (arglist state)
-    (state)))
+    ((cons '() (list (state))))))
 
 
 
@@ -537,9 +540,24 @@
       ((list? value) (G_eval_atomic_statement-value_state value state))
       ((integer? value) (cons value (list state)))
       ((boolean? value) (cons value (list state)))
+      ((java_boolean? value) (cons (lookup_java_boolean value) (list state)))
       ((G_initialized? value state) (cons (variable_value_lookup value state) (list state)))
       (else (error "unsupported value lookup")))))
 
+(define java_boolean?
+  (lambda (value)
+    (cond
+      ((eq? value 'true) #t)
+      ((eq? value 'false) #t)
+      (else #f))))
+
+
+(define lookup_java_boolean
+  (lambda (value)
+    (cond
+      ((eq? value 'true) (cons #t (list state)))
+      ((eq? value 'false) (cons #f (list state)))
+      (else (error "not a java boolean")))))
 
 ; tests whether variable is declared
 ; this function will need to check inputs and error
@@ -659,6 +677,7 @@
       ((list? value) (G_type_lookup (get_value_from_pair (G_value_lookup-value_state value state)) state))
       ((integer? value) 'integer)
       ((boolean? value) 'boolean)
+      ((java_boolean? value) 'boolean)
       ((G_initialized? value state) (variable_type_lookup value state))
       (else (error "uninitialized variable or unsupported type")))))
 
