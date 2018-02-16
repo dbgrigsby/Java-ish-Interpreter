@@ -3,7 +3,8 @@
 
 (define interpret
   (lambda (filename)
-    (output-formatter (evaluate_parse_tree-retval_state (parser filename) `(()()) ))))
+    (with-handlers ([exn:fail? error-handler])
+      (output-formatter (evaluate_parse_tree-retval_state (parser filename) `(()()))))))
 
 ; From (value state) -> value
 ; If value is #t or #f, parses to correct string literal
@@ -14,6 +15,14 @@
     ((eq? (car toFormat) #f) `false)
     (else (car toFormat)))))
 
+; Error handler, returns `error if error bubbles up
+; All errors, despite their text, return 'error for test purposes
+(define error-handler
+  (lambda (exception)
+    `error))
+
+
+; Main evaluation of parse tree function
 (define evaluate_parse_tree-retval_state
   (lambda (program state)
     (cond
