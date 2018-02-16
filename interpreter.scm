@@ -3,7 +3,16 @@
 
 (define interpret
   (lambda (filename)
-    (evaluate_parse_tree-retval_state (parser filename) `(()()) )))
+    (output-formatter (evaluate_parse_tree-retval_state (parser filename) `(()()) ))))
+
+; From (value state) -> value
+; If value is #t or #f, parses to correct string literal
+(define output-formatter
+  (lambda (toFormat)
+  (cond
+    ((eq? (car toFormat) #t) `true)
+    ((eq? (car toFormat) #f) `false)
+    (else (car toFormat)))))
 
 (define evaluate_parse_tree-retval_state
   (lambda (program state)
@@ -125,7 +134,7 @@
   (lambda (arglist state return_val)
     (cond
       ((not (null? return_val)) (cons return_val state))
-      
+
       ((get_value_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))
        (G_evaluate_while_statement-retval_state arglist
          (get_state_from_pair (evaluate_parse_tree-retval_state (list (get_while_statement arglist))

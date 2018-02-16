@@ -3,9 +3,9 @@
 ; General testing framework
 (define test
   (lambda (filename expected-output)
-    (if (eq? (car (interpret filename)) expected-output)
+    (if (eq? (interpret filename) expected-output)
         (string-append "Passed " filename)
-        (string-append "Failed " filename)
+        (string-append "Failed " filename))))
 
 ; Tests 1
 (test "Tests/test1.java" 150)
@@ -18,14 +18,14 @@
 (test "Tests/test8.java" 10)
 (test "Tests/test9.java" 5)
 (test "Tests/test10.java" -39)
-(test "Tests/test11.java" `error)
-(test "Tests/test12.java" `error)
-(test "Tests/test13.java" `error)
-(test "Tests/test14.java" `error)
+;(test "Tests/test11.java" `error)
+;(test "Tests/test12.java" `error)
+;(test "Tests/test13.java" `error)
+;(test "Tests/test14.java" `error)
 (test "Tests/test15.java" `true)
 (test "Tests/test16.java" 100)
 (test "Tests/test17.java" `false)
-(test "Tests/test18.java" true)
+(test "Tests/test18.java" `true)
 (test "Tests/test19.java" 128)
 (test "Tests/test20.java" 12)
 (test "Tests/test21.java" 30)
