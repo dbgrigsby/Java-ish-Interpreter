@@ -24,7 +24,7 @@
       ((null? arglist) (error "Not a statement"))
       ((eq? 'return (get_upcoming_statement_name arglist)) (G_evaluate_return_statement-retvalue_state arglist state))
       ((eq? 'var (get_upcoming_statement_name arglist)) (cons '() (list (G_evaluate_var_declare_statement-state arglist state))))
-      ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement-retval_state arglist state))
+      ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement-retval_state arglist state '()))
       ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement-retval_state arglist state))
       (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state arglist state))))))))
 
@@ -121,11 +121,28 @@
 
 ; while loop section
 ; currently does nothing as placeholder
-(define G_evaluate_while_statement-state
-  (lambda (arglist state)
-    ((cons '() (list (state))))))
+(define G_evaluate_while_statement-retval_state
+  (lambda (arglist state return_val)
+    (cond
+      ((not (null? return_val)) (cons return_val state))
+      
+      ((get_value_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))
+       (G_evaluate_while_statement-retval_state arglist
+         (get_state_from_pair (evaluate_parse_tree-retval_state (list (get_while_statement arglist))
+           (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))
+         (get_value_from_pair (evaluate_parse_tree-retval_state (list (get_while_statement arglist))
+           (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))))
+
+       (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))))))
 
 
+(define get_while_cond
+  (lambda (arglist)
+    (cadr arglist)))
+
+(define get_while_statement
+  (lambda(arglist)
+    (caddr arglist)))
 
 
 
