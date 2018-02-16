@@ -422,8 +422,8 @@
     (cons
      ((compare_operator_to_function_multi op)
       (get_value_from_pair (G_value_lookup-value_state arg1 state))
-      (get_value_from_pair (G_value_lookup-value_state arg2 state)))
-     (list (get_state_from_pair (G_value_lookup-value_state arg1 (get_state_from_pair (G_value_lookup-value_state arg2 state))))))))
+      (get_value_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
+     (list (get_state_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state))))))))
 
 ; this function evaluates booleans
 ; this function is for 2 argument boolean expressions
@@ -434,8 +434,8 @@
       ((and (eq? (G_type_lookup arg1 state) 'boolean) (eq? (G_type_lookup arg2 state) 'boolean))
        (cons ((boolean_operator_to_function_multi op)
               (get_value_from_pair (G_value_lookup-value_state arg1 state))
-              (get_value_from_pair (G_value_lookup-value_state arg2 state)))
-             (list (get_state_from_pair (G_value_lookup-value_state arg1 (get_state_from_pair (G_value_lookup-value_state arg2 state)))))))
+              (get_value_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
+             (list (get_state_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state)))))))
       (else (error "not valid types for boolean expression")))))
 
 
@@ -456,8 +456,8 @@
   (lambda (op arg1 arg2 state)
     (cons ((math_operator_to_function_multi op #t)
            (get_value_from_pair (G_value_lookup-value_state arg1 state))
-           (get_value_from_pair (G_value_lookup-value_state arg2 state)))
-          (list (get_state_from_pair (G_value_lookup-value_state arg1 (get_state_from_pair (G_value_lookup-value_state arg2 state))))))))
+           (get_value_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
+          (list (get_state_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state))))))))
 
 ; this function takes a boolean operator (ie: !) and returns the actual function
 ; this translation is for 1 argument boolean expressions
