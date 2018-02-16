@@ -160,7 +160,8 @@
        (error "variable already declared"))
       ((only_declare? arglist) (declare_var-state (get_var_name_from_declare_args arglist) state))
       (else (initialize_var-state (get_var_name_from_declare_args arglist)
-                            (get_value_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist) state)) state)))))
+                            (get_value_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist) state))
+                            (get_state_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist) state)))))))
 
 (define only_declare?
   (lambda (arglist)
@@ -555,8 +556,8 @@
 (define lookup_java_boolean
   (lambda (value)
     (cond
-      ((eq? value 'true) (cons #t (list state)))
-      ((eq? value 'false) (cons #f (list state)))
+      ((eq? value 'true) #t)
+      ((eq? value 'false) #f)
       (else (error "not a java boolean")))))
 
 ; tests whether variable is declared
