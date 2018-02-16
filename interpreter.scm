@@ -1,5 +1,7 @@
 (load "simpleParser.scm")
-; Interpretation loop section
+
+; This section reads code from a file, parses it to a list,
+; interprets it and returns the return value or error
 
 (define interpret
   (lambda (filename)
@@ -11,9 +13,9 @@
 (define output-formatter
   (lambda (toFormat)
   (cond
-    ((eq? (car toFormat) #t) `true)
-    ((eq? (car toFormat) #f) `false)
-    (else (car toFormat)))))
+    ((eq? (get-retval toFormat) #t) `true)
+    ((eq? (get-retval toFormat) #f) `false)
+    (else (get-retval toFormat)))))
 
 ; Error handler, returns `error if error bubbles up
 ; All errors, despite their text, return 'error for test purposes
@@ -21,6 +23,16 @@
   (lambda (exception)
     `error))
 
+; Pull out the retval from the (retval, (state)) pair.
+(define get-retval
+  (lambda (retval-state)
+    (car retval-state)))
+
+
+
+
+
+; Interpretation loop section
 
 ; Main evaluation of parse tree function
 (define evaluate_parse_tree-retval_state
