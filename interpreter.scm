@@ -42,8 +42,8 @@
       ; empty list should return the state (ie: at the end of an if statement's statements)
       ((null? program) (cons '() (list state)))
       ((not (list? program)) (error "Invalid program syntax"))
-      ((not (null? (get_value_from_pair (evaluate_statement-retval_state (car program) state)))) (evaluate_statement-retval_state (car program) state))
-      ((pair? (car program))  (evaluate_parse_tree-retval_state (cdr program) (get_state_from_pair (evaluate_statement-retval_state (car program) state))))
+      ((not (null? (get_value_from_pair (evaluate_statement-retval_state (program_head program) state)))) (evaluate_statement-retval_state (program_head program) state))
+      ((pair? (program_head program))  (evaluate_parse_tree-retval_state (program_tail program) (get_state_from_pair (evaluate_statement-retval_state (program_head program) state))))
       (else (error "Invalid program syntax")))))
 
 
@@ -57,6 +57,9 @@
       ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement-retval_state arglist state '()))
       ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement-retval_state arglist state))
       (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state arglist state))))))))
+
+(define program_head car)
+(define program_tail cdr)
 
 ; Returns the type of the upcoming statement in an arglist
 ; (e.g. (var x (+ 1 2)) yields 'var)
@@ -202,7 +205,7 @@
 (define G_evaluate_var_declare_statement-state
   (lambda (arglist state)
     (cond
-      ((null? (cdr arglist)) (error "Nothing after the var"))
+      ((null? (arglist_tail arglist)) (error "Nothing after the var"))
       ((G_declared? (get_var_name_from_declare_args arglist) state)
        (error "variable already declared"))
       ((only_declare? arglist) (declare_var-state (get_var_name_from_declare_args arglist) state))
@@ -259,10 +262,13 @@
   (lambda (arglist state)
     (cond
       ((single_atom? arglist) (G_value_lookup-value_state arglist state))
-      ((single_value_list? arglist) (G_value_lookup-value_state (car arglist) state))
+      ((single_value_list? arglist) (G_value_lookup-value_state (arglist_head arglist) state))
       ((G_expr? arglist) (G_eval_expr-value_state arglist state))
       ((G_assign? arglist) (G_eval_assign-value_state arglist state))
       (else (error "not a valid atomic statement")))))
+
+(define arglist_head car)
+(define arglist_tail cdr)
 
 (define single_atom?
   (lambda (arglist)
@@ -614,7 +620,7 @@
   (lambda (variable_name state)
     (cond
       ((null? state) #f)
-      ((null? (car state)) #f)
+      ((null? (get_variable_section_state state)) #f)
       ((eq? (get_state_variable_head state) variable_name) #t)
       (else (G_declared? variable_name (get_tail_state state))))))
 
@@ -645,7 +651,7 @@
     (cond
       ; If the state is empty, push to the state
       ((null? state) (list (list variable) (list number)))
-      ((null? (car state)) (list (list variable) (list number)))
+      ((null? (get_variable_section_state state)) (list (list variable) (list number)))
 
       ; If the variable head of the state equals the variable we are tryinig to push,
       ; Update the variable's value
@@ -676,8 +682,8 @@
 (define append_state
   (lambda (head_state tail_state)
     (list
-     (append (list (get_state_variable_head head_state)) (car tail_state))
-     (append (list (get_state_value_head head_state)) (cadr tail_state)))))
+     (append (list (get_state_variable_head head_state)) (get_variable_section_state tail_state))
+     (append (list (get_state_value_head head_state)) (get_value_section_state tail_state)))))
 
 ; looks up the value of a variable in the state
 ; returns the value of the variable or an error if the variable was not found
@@ -706,6 +712,9 @@
 (define get_state_value_tail
   (lambda (state)
     (cdadr state)))
+
+(define get_variable_section_state car)
+(define get_value_section_state cadr)
 
 (define get_tail_state
   (lambda (state)
