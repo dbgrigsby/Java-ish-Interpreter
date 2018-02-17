@@ -5,7 +5,7 @@
   (lambda (filename expected-output)
     (if (eq? (interpret filename) expected-output)
         (string-append "Passed " filename)
-        (string-append "Failed " filename))))
+        (string-append "##### Failed " filename))))
 
 ; Tests 1
 (test "Tests/test1.java" 150)

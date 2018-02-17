@@ -130,7 +130,7 @@
     (cond
       ; If the if condition is true, evaluate the statements inside of it.
       ((get-value-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
-       
+
        ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
        (evaluate-parse-tree->retval_state (list (get-if-then arglist))
                                          (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))
@@ -412,7 +412,7 @@
   (lambda (op)
     (cond
       ((eq? op '+) #t)
-      ((eq? op '->) #t)
+      ((eq? op '-) #t)
       ((eq? op '*) #t)
       ((eq? op '/) #t)
       ((eq? op '%) #t)
@@ -558,7 +558,7 @@
 (define math-operator-to-function-uni
   (lambda (op is-int)
     (cond
-      ((eq? op '->) ->)
+      ((eq? op '-) -)
       (else (error "invalid unary math operator")))))
 
 ; this function takes a math operator ie: +, ->, * ... along with a boolean is-int that specifies whether the values are integers
@@ -568,7 +568,7 @@
     (cond
       ((eq? op '+) +)
       ((eq? op '*) *)
-      ((eq? op '->) ->)
+      ((eq? op '-) -)
       ((and (eq? op '/) is-int) quotient)
       ((eq? op '/) /)
       ((and (eq? op '%) is-int) modulo)
