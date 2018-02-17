@@ -5,28 +5,28 @@
 
 (define interpret
   (lambda (filename)
-    (with-handlers ([exn:fail? error-handler])
-      (output-formatter (evaluate_parse_tree-retval_state (parser filename) `(()()))))))
+    (with-handlers ([exn:fail? error->handler])
+      (output->formatter (evaluate-parse-tree->retval_state (parser filename) `(()()))))))
 
-; From (value state) -> value
+; From (value state) ->> value
 ; If value is #t or #f, parses to correct string literal
-(define output-formatter
+(define output->formatter
   (lambda (toFormat)
   (cond
-    ((eq? (get-retval toFormat) #t) `true)
-    ((eq? (get-retval toFormat) #f) `false)
-    (else (get-retval toFormat)))))
+    ((eq? (get->retval toFormat) #t) `true)
+    ((eq? (get->retval toFormat) #f) `false)
+    (else (get->retval toFormat)))))
 
 ; Error handler, returns `error if error bubbles up
 ; All errors, despite their text, return 'error for test purposes
-(define error-handler
-  (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error-handler] relies on this format.
+(define error->handler
+  (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error->handler] relies on this format.
     `error))
 
 ; Important section helper functions for abstraction are defined below
 
 ; Pull out the retval from the (retval, (state)) pair.
-(define get-retval car)
+(define get->retval car)
 
 
 
@@ -46,40 +46,40 @@
 ; Interpretation loop section
 
 ; Main evaluation of parse tree function
-(define evaluate_parse_tree-retval_state
+(define evaluate-parse-tree->retval_state
   (lambda (program state)
     (cond
       ; not all programs/ segments must end in return
       ; empty list should return the state (ie: at the end of an if statement's statements)
       ((null? program) (cons '() (list state)))
       ((not (list? program)) (error "Invalid program syntax"))
-      ((not (null? (get_value_from_pair (evaluate_statement-retval_state (program_head program) state))))
-       (evaluate_statement-retval_state (program_head program) state))
-      ((pair? (program_head program))
-       (evaluate_parse_tree-retval_state (program_tail program)
-                                         (get_state_from_pair (evaluate_statement-retval_state (program_head program) state))))
+      ((not (null? (get-value-from-pair (evaluate-statement->retval_state (program-head program) state))))
+       (evaluate-statement->retval_state (program-head program) state))
+      ((pair? (program-head program))
+       (evaluate-parse-tree->retval_state (program-tail program)
+                                         (get-state-from-pair (evaluate-statement->retval_state (program-head program) state))))
       (else (error "Invalid program syntax")))))
 
 
 ; Returns state updated after evaluating pair
-(define evaluate_statement-retval_state
+(define evaluate-statement->retval_state
   (lambda (arglist state)
     (cond
       ((null? arglist) (error "Not a statement"))
-      ((eq? 'return (get_upcoming_statement_name arglist)) (G_evaluate_return_statement-retvalue_state arglist state))
-      ((eq? 'var (get_upcoming_statement_name arglist)) (cons '() (list (G_evaluate_var_declare_statement-state arglist state))))
-      ((eq? 'while (get_upcoming_statement_name arglist)) (G_evaluate_while_statement-retval_state arglist state '()))
-      ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement-retval_state arglist state))
-      (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state arglist state))))))))
+      ((eq? 'return (get-upcoming-statement-name arglist)) (G-evaluate-return-statement->retvalue_state arglist state))
+      ((eq? 'var (get-upcoming-statement-name arglist)) (cons '() (list (G-evaluate-var-declare-statement->state arglist state))))
+      ((eq? 'while (get-upcoming-statement-name arglist)) (G-evaluate-while-statement->retval_state arglist state '()))
+      ((eq? 'if (get-upcoming-statement-name arglist)) (G-evaluate-if-statement->retval_state arglist state))
+      (else (cons '() (list (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))))
 
 ; Important section helper functions for abstraction are defined below
-(define program_head car)
-(define program_tail cdr)
+(define program-head car)
+(define program-tail cdr)
 
 
 ; Returns the type of the upcoming statement in an arglist
 ; (e.g. (var x (+ 1 2)) yields 'var)
-(define get_upcoming_statement_name car)
+(define get-upcoming-statement-name car)
 
 
 
@@ -101,12 +101,12 @@
 
 ; currently returns both state and value, should just return value
 ; returns state and value for debug purposes
-(define G_evaluate_return_statement-retvalue_state
+(define G-evaluate-return-statement->retvalue_state
   (lambda (arglist state)
-    (G_eval_atomic_statement-value_state (rest_of_return_statement arglist) state)))
+    (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state)))
 
 ; Important section helper functions for abstraction are defined below
-(define rest_of_return_statement cdr)
+(define rest-of-return-statement cdr)
 
 
 
@@ -125,35 +125,35 @@
 ; if statement section
 
 ; Returns the value yielded from an if statement and the updated state
-(define G_evaluate_if_statement-retval_state
+(define G-evaluate-if-statement->retval_state
   (lambda (arglist state)
     (cond
       ; If the if condition is true, evaluate the statements inside of it.
-      ((get_value_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))
+      ((get-value-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
        
        ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
-       (evaluate_parse_tree-retval_state (list (get_if_then arglist))
-                                         (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))
-      ((has_else? arglist)
-       (evaluate_parse_tree-retval_state (list (get_if_else arglist))
-                                         (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))
+       (evaluate-parse-tree->retval_state (list (get-if-then arglist))
+                                         (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))
+      ((has-else? arglist)
+       (evaluate-parse-tree->retval_state (list (get-if-else arglist))
+                                         (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))
 
       ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-      (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))))))
+      (else (cons '() (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))))))
 
-(define get_if_else
+(define get-if-else
   (lambda (arglist)
     (cond
-      ((not (has_else? arglist)) (error "no else statement"))
+      ((not (has-else? arglist)) (error "no else statement"))
       (else (cadddr arglist)))))
 
-(define has_else?
+(define has-else?
   (lambda (arglist)
     (pair? (cdddr arglist))))
 
 ; Important section helper functions for abstraction are defined below
-(define get_if_cond cadr)
-(define get_if_then caddr)
+(define get-if-cond cadr)
+(define get-if-then caddr)
 
 
 
@@ -176,28 +176,28 @@
 ; while loop section
 
 ; Returns the value yielded from a while statement and the updated state
-(define G_evaluate_while_statement-retval_state
-  (lambda (arglist state return_val)
+(define G-evaluate-while-statement->retval_state
+  (lambda (arglist state return-val)
     (cond
-      ((not (null? return_val)) (cons return_val state))
+      ((not (null? return-val)) (cons return-val state))
 
       ; If the while condition is true, evaluate the statements inside of it.
-      ((get_value_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))
-       (G_evaluate_while_statement-retval_state arglist
+      ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
+       (G-evaluate-while-statement->retval_state arglist
          ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
-         (get_state_from_pair (evaluate_parse_tree-retval_state (list (get_while_statement arglist))
-                                                                (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))
-         ; If any statement resulted in a return value, the first return gets executed by passing it into return_val when we recur
-         (get_value_from_pair (evaluate_parse_tree-retval_state (list (get_while_statement arglist))
-           (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))))
+         (get-state-from-pair (evaluate-parse-tree->retval_state (list (get-while-statement arglist))
+                                                                (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))
+         ; If any statement resulted in a return value, the first return gets executed by passing it into return-val when we recur
+         (get-value-from-pair (evaluate-parse-tree->retval_state (list (get-while-statement arglist))
+           (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))
 
        ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-       (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))))))
+       (else (cons '() (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
 
 
 ; Important section helper functions for abstraction are defined below
-(define get_while_cond cadr)
-(define get_while_statement caddr)
+(define get-while-cond cadr)
+(define get-while-statement caddr)
 
 
 
@@ -224,37 +224,37 @@
 
 ; Variable declaration section
 ; Returns updated state after a declaration or initialization
-(define G_evaluate_var_declare_statement-state
+(define G-evaluate-var-declare-statement->state
   (lambda (arglist state)
     (cond
-      ((null? (arglist_tail arglist)) (error "Nothing after the var"))
-      ((G_declared? (get_var_name_from_declare_args arglist) state)
+      ((null? (arglist-tail arglist)) (error "Nothing after the var"))
+      ((G-declared? (get-var-name-from-declare-args arglist) state)
        (error "variable already declared"))
-      ((only_declare? arglist)
-       (declare_var-state (get_var_name_from_declare_args arglist)
+      ((only-declare? arglist)
+       (declare-var->state (get-var-name-from-declare-args arglist)
                           state))
-      (else (initialize_var-state (get_var_name_from_declare_args arglist)
-                                  (get_value_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist)
+      (else (initialize-var->state (get-var-name-from-declare-args arglist)
+                                  (get-value-from-pair (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist)
                                                                                             state))
-                                  (get_state_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist)
+                                  (get-state-from-pair (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist)
                                                                                             state)))))))
 
-(define declare_var-state
+(define declare-var->state
   (lambda (name state)
-    (G_push_state-state name `() state)))
+    (G-push-state->state name `() state)))
 
 ; Pushes the initializes the variable to the state
-(define initialize_var-state
+(define initialize-var->state
   (lambda (name value state)
-    (G_push_state-state name value state)))
+    (G-push-state->state name value state)))
 
-(define only_declare?
+(define only-declare?
   (lambda (arglist)
     (null? (cddr arglist))))
 
 ; Important section helper functions for abstraction are defined below
-(define get_var_name_from_declare_args cadr)
-(define truncate_var_name_from_declare cddr)
+(define get-var-name-from-declare-args cadr)
+(define truncate-var-name-from-declare cddr)
 
 
 
@@ -282,44 +282,42 @@
 ; (e.g. (> x (+ y 1)) is an atomic statement)
 ; (e.g. (== 3 (= x (+ x 1)) is an atomic statement)
 ; Atomic statements can be put
-(define G_eval_atomic_statement-value_state
+(define G-eval-atomic-statement->value_state
   (lambda (arglist state)
     (cond
-      ((single_atom? arglist) (G_value_lookup-value_state arglist state))
-      ((single_value_list? arglist) (G_value_lookup-value_state (arglist_head arglist) state))
-      ((G_expr? arglist) (G_eval_expr-value_state arglist state))
-      ((G_assign? arglist) (G_eval_assign-value_state arglist state))
+      ((single-atom? arglist) (G-value-lookup->value_state arglist state))
+      ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state))
+      ((G-expr? arglist) (G-eval-expr->value_state arglist state))
+      ((G-assign? arglist) (G-eval-assign->value_state arglist state))
       (else (error "not a valid atomic statement")))))
 
 
-(define single_atom?
+(define single-atom?
   (lambda (arglist)
     (not (list? arglist))))
 
-(define single_value_list?
+(define single-value-list?
   (lambda (arglist)
     (eq? (length arglist) 1)))
 
-(define G_atomic_statement?
+(define G-atomic-statement?
   (lambda (arglist state)
     (cond
-      ((single_atom? arglist) #t)
-      ((single_value_list? arglist) #t)
-      ((G_expr? arglist) #t)
-      ((G_assign? arglist) #t)
+      ((single-atom? arglist) #t)
+      ((single-value-list? arglist) #t)
+      ((G-expr? arglist) #t)
+      ((G-assign? arglist) #t)
       (else #f))))
 
 ; Important section helper functions for abstraction are defined below
-(define arglist_head car)
-(define arglist_tail cdr)
+(define arglist-head car)
+(define arglist-tail cdr)
 
-(define get_op_from_expr car)
-(define get_arg1_from_expr cadr)
-(define get_arg2_from_expr caddr)
-(define get_state_from_pair cadr)
-(define get_value_from_pair car)
-
-
+(define get-op-from-expr car)
+(define get-arg1-from-expr cadr)
+(define get-arg2-from-expr caddr)
+(define get-state-from-pair cadr)
+(define get-value-from-pair car)
 
 
 
@@ -338,27 +336,29 @@
 
 
 
-; eval_assign section
+
+
+; eval-assign section
 ; this function evaluates assignment statements
 ; will returns value state pair
-; (e.g. (= x 1) will return (1 (updated_state)))
-(define G_eval_assign-value_state
+; (e.g. (= x 1) will return (1 (updated-state)))
+(define G-eval-assign->value_state
   (lambda (arglist state)
     (cond
-      ((not (G_assign? arglist)) (error "not an assignment"))
-      ((G_declared? (get_arg1_from_expr arglist) state)
-       (G_value_lookup-value_state (get_arg1_from_expr arglist)
-                                   (G_push_state-state (get_arg1_from_expr arglist)
-                                                       (get_value_from_pair (G_eval_atomic_statement-value_state (get_arg2_from_expr arglist)
+      ((not (G-assign? arglist)) (error "not an assignment"))
+      ((G-declared? (get-arg1-from-expr arglist) state)
+       (G-value-lookup->value_state (get-arg1-from-expr arglist)
+                                   (G-push-state->state (get-arg1-from-expr arglist)
+                                                       (get-value-from-pair (G-eval-atomic-statement->value_state (get-arg2-from-expr arglist)
                                                                                                                  state))
-                                                       (get_state_from_pair (G_eval_atomic_statement-value_state(get_arg2_from_expr arglist)
+                                                       (get-state-from-pair (G-eval-atomic-statement->value_state(get-arg2-from-expr arglist)
                                                                                                                 state)))))
       (else (error "variable undeclared")))))
 
-(define G_assign?
+(define G-assign?
   (lambda (arglist)
     (cond
-      ((eq? (get_op_from_expr arglist) '=) #t)
+      ((eq? (get-op-from-expr arglist) '=) #t)
       (else #f))))
 
 
@@ -380,45 +380,45 @@
 
 
 
-; eval_expression section
+; eval-expression section
 ; this function evaluates all expressions
 ; expressions are defined as built in math, boolean, or comparison operators
 ; expressions cover the scope of math expressions and boolean expressions (or conditional statements)
-; Returns (value, updated_state)
-(define G_eval_expr-value_state
+; Returns (value, updated-state)
+(define G-eval-expr->value_state
   (lambda (arglist state)
     (cond
-      ((not (G_expr? arglist)) (error "given invalid expression operation"))
+      ((not (G-expr? arglist)) (error "given invalid expression operation"))
       ((eq? (length arglist) 2)
-       (eval_expr_uni-value_state (get_op_from_expr arglist)
-                                  (get_arg1_from_expr arglist)
+       (eval-expr-uni->value_state (get-op-from-expr arglist)
+                                  (get-arg1-from-expr arglist)
                                   state))
       ((eq? (length arglist) 3)
-       (eval_expr_multi-value_state (get_op_from_expr arglist)
-                                    (get_arg1_from_expr arglist)
-                                    (get_arg2_from_expr arglist)
+       (eval-expr-multi->value_state (get-op-from-expr arglist)
+                                    (get-arg1-from-expr arglist)
+                                    (get-arg2-from-expr arglist)
                                     state))
       (else (error "invalid number of arguments")))))
 
-(define G_expr?
+(define G-expr?
   (lambda (arglist)
     (cond
-      ((math_expr? (get_op_from_expr arglist)) #t)
-      ((boolean_expr? (get_op_from_expr arglist)) #t)
-      ((compare_expr? (get_op_from_expr arglist)) #t)
+      ((math-expr? (get-op-from-expr arglist)) #t)
+      ((boolean-expr? (get-op-from-expr arglist)) #t)
+      ((compare-expr? (get-op-from-expr arglist)) #t)
       (else #f))))
 
-(define math_expr?
+(define math-expr?
   (lambda (op)
     (cond
       ((eq? op '+) #t)
-      ((eq? op '-) #t)
+      ((eq? op '->) #t)
       ((eq? op '*) #t)
       ((eq? op '/) #t)
       ((eq? op '%) #t)
       (else #f))))
 
-(define boolean_expr?
+(define boolean-expr?
   (lambda (op)
     (cond
       ((eq? op '&&) #t)
@@ -426,7 +426,7 @@
       ((eq? op '!) #t)
       (else #f))))
 
-(define compare_expr?
+(define compare-expr?
   (lambda (op)
     (cond
       ((eq? op '==) #t)
@@ -439,145 +439,145 @@
 
 ; this function evaluates all 1 argument expressions
 ; it currently only evaluates ints and booleans
-(define eval_expr_uni-value_state
+(define eval-expr-uni->value_state
   (lambda (op arg1 state)
     (cond
-      ((math_expr? op) (eval_math_expr_uni-value_state op arg1 state))
-      ((boolean_expr? op) (eval_boolean_expr_uni-value_state op arg1 state))
+      ((math-expr? op) (eval-math-expr-uni->value_state op arg1 state))
+      ((boolean-expr? op) (eval-boolean-expr-uni->value_state op arg1 state))
       (else (error "unsupported expression")))))
 
 ; this function evaluates booleans
 ; this function is for 1 argument boolean expressions
-(define eval_boolean_expr_uni-value_state
+(define eval-boolean-expr-uni->value_state
   (lambda (op arg1 state)
     (cond
-      ((eq? (G_type_lookup arg1 state) 'boolean)
-       (cons ((boolean_operator_to_function_uni op)
-              (get_value_from_pair (G_value_lookup-value_state arg1 state)))
-             (list (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
+      ((eq? (G-type-lookup arg1 state) 'boolean)
+       (cons ((boolean-operator-to-function-uni op)
+              (get-value-from-pair (G-value-lookup->value_state arg1 state)))
+             (list (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
       (else (error "boolean operator not valid for non boolean types")))))
 
 ; this function evaluates math expressions
 ; it currently only supports integers
 ; this function is for 1 argument math expressions
-(define eval_math_expr_uni-value_state
+(define eval-math-expr-uni->value_state
   (lambda (op arg1 state)
     (cond
-      ((eq? (G_type_lookup arg1 state) 'integer)
-       (eval_math_expr_int_uni-value_state op arg1 state))
+      ((eq? (G-type-lookup arg1 state) 'integer)
+       (eval-math-expr-int-uni->value_state op arg1 state))
       (else (error "invalid type for math expression")))))
 
 ; this function evaluates math expressions of integers
 ; this function is for 1 argument math expressions
-(define eval_math_expr_int_uni-value_state
+(define eval-math-expr-int-uni->value_state
   (lambda (op arg1 state)
-    (cons ((math_operator_to_function_uni op #t)
-           (get_value_from_pair (G_value_lookup-value_state arg1 state)))
-          (list (get_state_from_pair (G_value_lookup-value_state arg1 state))))))
+    (cons ((math-operator-to-function-uni op #t)
+           (get-value-from-pair (G-value-lookup->value_state arg1 state)))
+          (list (get-state-from-pair (G-value-lookup->value_state arg1 state))))))
 
 ; this function evaluates all 2 argument expressions
 ; it currently only evaluates ints and booleans
-(define eval_expr_multi-value_state
+(define eval-expr-multi->value_state
   (lambda (op arg1 arg2 state)
     (cond
-      ((compare_expr? op) (eval_compare_expr_multi-value_state op arg1 arg2 state))
-      ((math_expr? op) (eval_math_expr_multi-value_state op arg1 arg2 state))
-      ((boolean_expr? op) (eval_boolean_expr_multi-value_state op arg1 arg2 state))
+      ((compare-expr? op) (eval-compare-expr-multi->value_state op arg1 arg2 state))
+      ((math-expr? op) (eval-math-expr-multi->value_state op arg1 arg2 state))
+      ((boolean-expr? op) (eval-boolean-expr-multi->value_state op arg1 arg2 state))
       (else (error "unsupported expression")))))
 
 ; this function evaluates comparisons
 ; this function is for 2 argument comparison expressions
-(define eval_compare_expr_multi-value_state
+(define eval-compare-expr-multi->value_state
   (lambda (op arg1 arg2 state)
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (cons ((compare_operator_to_function_multi op)
-           (get_value_from_pair (G_value_lookup-value_state arg1
+    (cons ((compare-operator-to-function-multi op)
+           (get-value-from-pair (G-value-lookup->value_state arg1
                                                             state))
-           (get_value_from_pair (G_value_lookup-value_state arg2
-                                                            (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
-          (list (get_state_from_pair (G_value_lookup-value_state arg2
-                                                            (get_state_from_pair (G_value_lookup-value_state arg1
+           (get-value-from-pair (G-value-lookup->value_state arg2
+                                                            (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
+          (list (get-state-from-pair (G-value-lookup->value_state arg2
+                                                            (get-state-from-pair (G-value-lookup->value_state arg1
                                                                                                              state))))))))
 
 ; this function evaluates booleans
 ; this function is for 2 argument boolean expressions
-; Returns (value, updated-state)
-(define eval_boolean_expr_multi-value_state
+; Returns (value, updated->state)
+(define eval-boolean-expr-multi->value_state
   (lambda (op arg1 arg2 state)
     (cond
       ; We return a (value, state), hence the cons for the value and the state
       ; The value is derived from applying the operator on arg1 and arg2
       ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-      ((and (eq? (G_type_lookup arg1 state) 'boolean) (eq? (G_type_lookup arg2 state) 'boolean))
-       (cons ((boolean_operator_to_function_multi op)
-              (get_value_from_pair (G_value_lookup-value_state arg1
+      ((and (eq? (G-type-lookup arg1 state) 'boolean) (eq? (G-type-lookup arg2 state) 'boolean))
+       (cons ((boolean-operator-to-function-multi op)
+              (get-value-from-pair (G-value-lookup->value_state arg1
                                                                state))
-              (get_value_from_pair (G_value_lookup-value_state arg2
-                                                               (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
-             (list (get_state_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state)))))))
+              (get-value-from-pair (G-value-lookup->value_state arg2
+                                                               (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
+             (list (get-state-from-pair (G-value-lookup->value_state arg2 (get-state-from-pair (G-value-lookup->value_state arg1 state)))))))
       (else (error "not valid types for boolean expression")))))
 
 
 ; this function evaluates math expressions
 ; it currently only supports integers
 ; this function is for 2 argument math expressions
-(define eval_math_expr_multi-value_state
+(define eval-math-expr-multi->value_state
   (lambda (op arg1 arg2 state)
     (cond
-      ((and (eq? (G_type_lookup arg1 state) 'integer) (eq? (G_type_lookup arg2 state) 'integer))
-       (eval_math_expr_int_multi-value_state op arg1 arg2 state))
+      ((and (eq? (G-type-lookup arg1 state) 'integer) (eq? (G-type-lookup arg2 state) 'integer))
+       (eval-math-expr-int-multi->value_state op arg1 arg2 state))
       (else (error "invalid types for math expression")))))
 
 ; this function evaluates math expressions of integers
 ; this function is for 2 argument math expressions
 ; returns updated state
-(define eval_math_expr_int_multi-value_state
+(define eval-math-expr-int-multi->value_state
   (lambda (op arg1 arg2 state)
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (cons ((math_operator_to_function_multi op #t)
-           (get_value_from_pair (G_value_lookup-value_state arg1
+    (cons ((math-operator-to-function-multi op #t)
+           (get-value-from-pair (G-value-lookup->value_state arg1
                                                             state))
-           (get_value_from_pair (G_value_lookup-value_state arg2
-                                                            (get_state_from_pair (G_value_lookup-value_state arg1 state)))))
-          (list (get_state_from_pair (G_value_lookup-value_state arg2 (get_state_from_pair (G_value_lookup-value_state arg1 state))))))))
+           (get-value-from-pair (G-value-lookup->value_state arg2
+                                                            (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
+          (list (get-state-from-pair (G-value-lookup->value_state arg2 (get-state-from-pair (G-value-lookup->value_state arg1 state))))))))
 
 ; this function takes a boolean operator (ie: !) and returns the actual function
 ; this translation is for 1 argument boolean expressions
-(define boolean_operator_to_function_uni
+(define boolean-operator-to-function-uni
   (lambda (op)
     (cond
       ((eq? op '!) (lambda (arg1) (not arg1)))
       (else (error "unsupported unary boolean expression")))))
 
-; this function takes a math operator ie: - along with a boolean is_int that specifies whether the values are integers
+; this function takes a math operator ie: -> along with a boolean is-int that specifies whether the values are integers
 ; this translation is for 1 argument math expressions
-(define math_operator_to_function_uni
-  (lambda (op is_int)
+(define math-operator-to-function-uni
+  (lambda (op is-int)
     (cond
-      ((eq? op '-) -)
+      ((eq? op '->) ->)
       (else (error "invalid unary math operator")))))
 
-; this function takes a math operator ie: +, -, * ... along with a boolean is_int that specifies whether the values are integers
+; this function takes a math operator ie: +, ->, * ... along with a boolean is-int that specifies whether the values are integers
 ; this translation is for 2 argument math expressions
-(define math_operator_to_function_multi
-  (lambda (op is_int)
+(define math-operator-to-function-multi
+  (lambda (op is-int)
     (cond
       ((eq? op '+) +)
       ((eq? op '*) *)
-      ((eq? op '-) -)
-      ((and (eq? op '/) is_int) quotient)
+      ((eq? op '->) ->)
+      ((and (eq? op '/) is-int) quotient)
       ((eq? op '/) /)
-      ((and (eq? op '%) is_int) modulo)
+      ((and (eq? op '%) is-int) modulo)
       ((eq? op '%) (error "modulo % only works on integers"))
       (else (error "invalid math operator")))))
 
 ; this function takes a boolean operator (ie: &&, ||, ...) and returns the actual function
 ; this translation is for 2 argument boolean expressions
-(define boolean_operator_to_function_multi
+(define boolean-operator-to-function-multi
   (lambda (op)
     (cond
       ((eq? op '&&) (lambda (arg1 arg2)
@@ -586,7 +586,7 @@
                       (or arg1 arg2)))
       (else (error "unsupported boolean expression")))))
 
-(define compare_operator_to_function_multi
+(define compare-operator-to-function-multi
   (lambda (op)
     (cond
       ((eq? op '==) equal?)
@@ -617,22 +617,22 @@
 
 
 
-; state_interface section
+; state-interface section
 ; this function takes values (integers, strings, variables, expressions, ...) and returns their actual value
 ; for now it only handles int and bolean literals and expressions of the two
-(define G_value_lookup-value_state
+(define G-value-lookup->value_state
   (lambda (value state)
     (cond
       ; if its an expression, evaluate to get value
-      ((list? value) (G_eval_atomic_statement-value_state value state))
+      ((list? value) (G-eval-atomic-statement->value_state value state))
       ((integer? value) (cons value (list state)))
       ((boolean? value) (cons value (list state)))
-      ((java_boolean? value) (cons (lookup_java_boolean value) (list state)))
-      ((G_initialized? value state) (cons (variable_value_lookup value state) (list state)))
+      ((java-boolean? value) (cons (lookup-java-boolean value) (list state)))
+      ((G-initialized? value state) (cons (variable-value-lookup value state) (list state)))
       (else (error "unsupported value lookup")))))
 
 ; Determines whether a boolean in java boolean notation was encountered
-(define java_boolean?
+(define java-boolean?
   (lambda (value)
     (cond
       ((eq? value 'true) #t)
@@ -640,7 +640,7 @@
       (else #f))))
 
 
-(define lookup_java_boolean
+(define lookup-java-boolean
   (lambda (value)
     (cond
       ((eq? value 'true) #t)
@@ -650,137 +650,137 @@
 ; tests whether variable is declared
 ; this function will need to check inputs and error
 ; as it will recieve bogus inputs
-(define G_declared?
-  (lambda (variable_name state)
+(define G-declared?
+  (lambda (variable-name state)
     (cond
       ((null? state) #f)
-      ((null? (get_variable_section_state state)) #f)
-      ((eq? (get_state_variable_head state) variable_name) #t)
-      (else (G_declared? variable_name (get_tail_state state))))))
+      ((null? (get-variable-section-state state)) #f)
+      ((eq? (get-state-variable-head state) variable-name) #t)
+      (else (G-declared? variable-name (get-tail-state state))))))
 
 ;tests whether variable is declared and initialized
-(define G_initialized?
-  (lambda (variable_name state)
+(define G-initialized?
+  (lambda (variable-name state)
     (cond
-      ((not (G_declared? variable_name state)) #f)
-      ((null? (variable_value_lookup variable_name state)) #f)
+      ((not (G-declared? variable-name state)) #f)
+      ((null? (variable-value-lookup variable-name state)) #f)
       (else #t))))
 
-; adds variable and its value to state or over-writes it
+; adds variable and its value to state or over->writes it
 ; If the value is a variable, the value of this variable is found and pushed to the state
 ; (e.g. if we are pushing (x y) and y = 3, we push (x 3) to the state
 ; returns the new state
-(define G_push_state-state
+(define G-push-state->state
   (lambda (variable value state)
     (cond
       ; If the value is a number, null, or boolean, push to the state
       ((or (number? value) (null? value) (boolean? value))
-       (push_variable_as_literal-state variable value state))
+       (push-variable-as-literal->state variable value state))
       ; If the value is not a number, push the value of this variable to the state
-      (else (push_variable_as_variable-state variable value state)))))
+      (else (push-variable-as-variable->state variable value state)))))
 
 ; Pushes a variable and a number to the state, or updates the state if the variable is there
 ; Returns the updated state
-(define push_variable_as_literal-state
+(define push-variable-as-literal->state
   (lambda (variable number state)
     (cond
       ; If the state is empty, push to the state
       ((null? state)
        (list (list variable)
              (list number)))
-      ((null? (get_variable_section_state state))
+      ((null? (get-variable-section-state state))
        (list (list variable)
              (list number)))
 
       ; If the variable head of the state equals the variable we are tryinig to push,
       ; Update the variable's value
-      ((eq? (get_state_variable_head state) variable)
+      ((eq? (get-state-variable-head state) variable)
        (list (cons variable
-                   (get_state_variable_tail state))
+                   (get-state-variable-tail state))
              (cons number
-                   (get_state_value_tail state))))
+                   (get-state-value-tail state))))
 
       ; If the variable head doesn't equal the variable we are trying to push, keep searching for it
-      (else (append_state
-             (get_head_state state)
-             (push_variable_as_literal-state variable
+      (else (append-state
+             (get-head-state state)
+             (push-variable-as-literal->state variable
                                              number
-                                             (get_tail_state state)))))))
+                                             (get-tail-state state)))))))
 
 
 ; Pushes a variable and the value of the variable's value to the state, or updates the state if the variable is there
 ; Precondition: Value is not null
 ; Returns the updated state
-(define push_variable_as_variable-state
+(define push-variable-as-variable->state
   (lambda (variable value state)
     (cond
-      ((not (G_declared? value state))
+      ((not (G-declared? value state))
        (error "Initialized variable value is an undeclared variable"))
-      (else (push_variable_as_variable-state variable
-                                             (get_value_from_pair (G_value_lookup-value_state value state))
+      (else (push-variable-as-variable->state variable
+                                             (get-value-from-pair (G-value-lookup->value_state value state))
                                              state)))))
 
 
 ; appends a head state to a tail state
 ; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))
 ; yields ((a b c d) (1 2 3 4)))
-(define append_state
-  (lambda (head_state tail_state)
+(define append-state
+  (lambda (head-state tail-state)
     (list
-     (append (list (get_state_variable_head head_state))
-             (get_variable_section_state tail_state))
-     (append (list (get_state_value_head head_state))
-             (get_value_section_state tail_state)))))
+     (append (list (get-state-variable-head head-state))
+             (get-variable-section-state tail-state))
+     (append (list (get-state-value-head head-state))
+             (get-value-section-state tail-state)))))
 
 ; looks up the value of a variable in the state
 ; returns the value of the variable or an error if the variable was not found
-(define variable_value_lookup
+(define variable-value-lookup
   (lambda (variable state)
     (cond
       ((null? state) (error "State is empty"))
       ((null? (car state)) (error "Variable not found in state"))
-      ((eq? (get_state_variable_head state) variable)
-       (get_state_value_head state))
-      (else (variable_value_lookup variable (get_tail_state state))))))
+      ((eq? (get-state-variable-head state) variable)
+       (get-state-value-head state))
+      (else (variable-value-lookup variable (get-tail-state state))))))
 
 ; this function takes values (integers, strings, variables, ...) and returns their type
 ; for now it only handles any atomic statement
-(define G_type_lookup
+(define G-type-lookup
   (lambda (value state)
     (cond
       ((list? value)
-       (G_type_lookup (get_value_from_pair (G_value_lookup-value_state value state))
+       (G-type-lookup (get-value-from-pair (G-value-lookup->value_state value state))
                       state))
       ((integer? value) 'integer)
       ((boolean? value) 'boolean)
-      ((java_boolean? value) 'boolean)
-      ((G_initialized? value state) (variable_type_lookup value state))
+      ((java-boolean? value) 'boolean)
+      ((G-initialized? value state) (variable-type-lookup value state))
       (else (error "uninitialized variable or unsupported type")))))
 
 ; looks up the type of a variable in the state
-(define variable_type_lookup
+(define variable-type-lookup
   (lambda (variable state)
-    (G_type_lookup (variable_value_lookup variable state) state)))
+    (G-type-lookup (variable-value-lookup variable state) state)))
 
 ; Important section helper functions for abstraction are defined below
 
-(define get_head_state
+(define get-head-state
   (lambda (state)
     (list
-     (list (get_state_variable_head state))
-     (list (get_state_value_head state)))))
+     (list (get-state-variable-head state))
+     (list (get-state-value-head state)))))
 
-(define get_tail_state
+(define get-tail-state
   (lambda (state)
-    (list (get_state_variable_tail state)
-          (get_state_value_tail state))))
+    (list (get-state-variable-tail state)
+          (get-state-value-tail state))))
 
 ; The state is stored as a list of two lists
 ; (e.g. the head of the values for '((a b c) (1 2 3)) is 1, by calling caadr)
 ; (e.g. the tail of the variables for '((a b c) (1 2 3)) is (b c), by calling cdar)
-(define get_state_variable_head caar)
-(define get_state_variable_tail cdar)
-(define get_state_value_head caadr)
-(define get_state_value_tail cdadr)
-(define get_variable_section_state car)
-(define get_value_section_state cadr)
+(define get-state-variable-head caar)
+(define get-state-variable-tail cdar)
+(define get-state-value-head caadr)
+(define get-state-value-tail cdadr)
+(define get-variable-section-state car)
+(define get-value-section-state cadr)
