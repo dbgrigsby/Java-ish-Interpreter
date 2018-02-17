@@ -9,8 +9,10 @@
 *.scm#*
 .#*.scm
 
-
 # End of https://www.gitignore.io/api/scheme
 
 ### WINDOWS ###
 *.bak
+
+#### MAC ###
+.DS_Store
