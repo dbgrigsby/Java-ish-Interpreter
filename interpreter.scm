@@ -20,13 +20,24 @@
 ; Error handler, returns `error if error bubbles up
 ; All errors, despite their text, return 'error for test purposes
 (define error-handler
-  (lambda (exception)
+  (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error-handler] relies on this format.
     `error))
 
+; Important section helper functions for abstraction are defined below
+
 ; Pull out the retval from the (retval, (state)) pair.
-(define get-retval
-  (lambda (retval-state)
-    (car retval-state)))
+(define get-retval car)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -58,11 +69,11 @@
       ((eq? 'if (get_upcoming_statement_name arglist)) (G_evaluate_if_statement-retval_state arglist state))
       (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state arglist state))))))))
 
+; Important section helper functions for abstraction are defined below
+
 ; Returns the type of the upcoming statement in an arglist
 ; (e.g. (var x (+ 1 2)) yields 'var)
-(define get_upcoming_statement_name
-  (lambda (arglist)
-    (car arglist)))
+(define get_upcoming_statement_name car)
 
 
 
@@ -81,15 +92,19 @@
 
 
 ; return statement section
+
 ; currently returns both state and value, should just return value
 ; returns state and value for debug purposes
 (define G_evaluate_return_statement-retvalue_state
   (lambda (arglist state)
     (G_eval_atomic_statement-value_state (rest_of_return_statement arglist) state)))
 
-(define rest_of_return_statement
-  (lambda (arglist)
-    (cdr arglist)))
+; Important section helper functions for abstraction are defined below
+(define rest_of_return_statement cdr)
+
+
+
+
 
 
 
@@ -102,7 +117,7 @@
 
 
 ; if statement section
-; currently does nothing as placeholder
+
 (define G_evaluate_if_statement-retval_state
   (lambda (arglist state)
     (cond
@@ -115,14 +130,6 @@
 
       (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state (get_if_cond arglist) state))))))))
 
-(define get_if_cond
-  (lambda (arglist)
-    (cadr arglist)))
-
-(define get_if_then
-  (lambda (arglist)
-    (caddr arglist)))
-
 (define get_if_else
   (lambda (arglist)
     (cond
@@ -132,6 +139,12 @@
 (define has_else?
   (lambda (arglist)
     (pair? (cdddr arglist))))
+
+; Important section helper functions for abstraction are defined below
+(define get_if_cond cadr)
+(define get_if_then caddr)
+
+
 
 
 
@@ -150,7 +163,8 @@
 
 
 ; while loop section
-; currently does nothing as placeholder
+
+; Returns the value yielded from a while statement and the updated state
 (define G_evaluate_while_statement-retval_state
   (lambda (arglist state return_val)
     (cond
@@ -166,13 +180,9 @@
        (else (cons '() (list (get_state_from_pair (G_eval_atomic_statement-value_state (get_while_cond arglist) state))))))))
 
 
-(define get_while_cond
-  (lambda (arglist)
-    (cadr arglist)))
-
-(define get_while_statement
-  (lambda(arglist)
-    (caddr arglist)))
+; Important section helper functions for abstraction are defined below
+(define get_while_cond cadr)
+(define get_while_statement caddr)
 
 
 
@@ -210,18 +220,6 @@
                             (get_value_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist) state))
                             (get_state_from_pair (G_eval_atomic_statement-value_state (truncate_var_name_from_declare arglist) state)))))))
 
-(define only_declare?
-  (lambda (arglist)
-    (null? (cddr arglist))))
-
-(define get_var_name_from_declare_args
-  (lambda (arglist)
-    (cadr arglist)))
-
-(define truncate_var_name_from_declare
-  (lambda (arglist)
-    (cddr arglist)))
-
 (define declare_var-state
   (lambda (name state)
     (G_push_state-state name `() state)))
@@ -230,6 +228,16 @@
 (define initialize_var-state
   (lambda (name value state)
     (G_push_state-state name value state)))
+
+(define only_declare?
+  (lambda (arglist)
+    (null? (cddr arglist))))
+
+; Important section helper functions for abstraction are defined below
+(define get_var_name_from_declare_args cadr)
+(define truncate_var_name_from_declare cddr)
+
+
 
 
 
@@ -281,28 +289,12 @@
       ((G_assign? arglist) #t)
       (else #f))))
 
-(define get_op_from_expr
-  (lambda (arglist)
-    (car arglist)))
-
-(define get_arg1_from_expr
-  (lambda (arglist)
-    (cadr arglist)))
-
-(define get_arg2_from_expr
-  (lambda (arglist)
-    (caddr arglist)))
-
-(define get_state_from_pair
-  (lambda (args)
-    (cadr args)))
-
-(define get_value_from_pair
-  (lambda (args)
-    (car args)))
-
-
-
+; Important section helper functions for abstraction are defined below
+(define get_op_from_expr car)
+(define get_arg1_from_expr cadr)
+(define get_arg2_from_expr caddr)
+(define get_state_from_pair cadr)
+(define get_value_from_pair car)
 
 
 
@@ -343,9 +335,6 @@
     (cond
       ((eq? (get_op_from_expr arglist) '=) #t)
       (else #f))))
-
-
-
 
 
 
@@ -553,10 +542,8 @@
       ((eq? op '<) <)
       ((eq? op '>) >)
       ((eq? op '<=) <=)
-      ((eq? op '>=) >=))))
-
-
-
+      ((eq? op '>=) >=)
+      (else (error "invalid comparison operator")))))
 
 
 
@@ -592,6 +579,7 @@
       ((G_initialized? value state) (cons (variable_value_lookup value state) (list state)))
       (else (error "unsupported value lookup")))))
 
+; Determines whether a boolean in java boolean notation was encountered
 (define java_boolean?
   (lambda (value)
     (cond
@@ -691,32 +679,6 @@
                                    (list (get_state_variable_tail state)
                                          (get_state_value_tail state)))))))
 
-(define get_state_variable_head
-  (lambda (state)
-    (caar state)))
-
-(define get_state_variable_tail
-  (lambda (state)
-    (cdar state)))
-
-(define get_state_value_head
-  (lambda (state)
-    (caadr state)))
-
-(define get_state_value_tail
-  (lambda (state)
-    (cdadr state)))
-
-(define get_tail_state
-  (lambda (state)
-    (list (get_state_variable_tail state) (get_state_value_tail state))))
-
-(define get_head_state
-  (lambda (state)
-    (list
-     (list (get_state_variable_head state))
-     (list (get_state_value_head state)))))
-
 ; this function takes values (integers, strings, variables, ...) and returns their type
 ; for now it only handles any atomic statement
 (define G_type_lookup
@@ -733,3 +695,23 @@
 (define variable_type_lookup
   (lambda (variable state)
     (G_type_lookup (variable_value_lookup variable state) state)))
+
+; Important section helper functions for abstraction are defined below
+
+(define get_head_state
+  (lambda (state)
+    (list
+     (list (get_state_variable_head state))
+     (list (get_state_value_head state)))))
+
+(define get_tail_state
+  (lambda (state)
+    (list (get_state_variable_tail state) (get_state_value_tail state))))
+
+; The state is stored as a list of two lists
+; (e.g. the head of the values for '((a b c) (1 2 3)) is 1, by calling caadr)
+; (e.g. the tail of the variables for '((a b c) (1 2 3)) is (b c), by calling cdar)
+(define get_state_variable_head caar)
+(define get_state_variable_tail cdar)
+(define get_state_value_head caadr)
+(define get_state_value_tail cdadr)
