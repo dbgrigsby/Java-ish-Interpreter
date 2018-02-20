@@ -7,9 +7,7 @@
 ; This section reads code from a file, parses it to a list,
 ; interprets it and returns the return value or error
 
-(define initstate
-  (lambda ()
-    '(() ()))) ; '() is also a valid empty state that is handled in our program
+(define initstate '(() ())) ; '() is also a valid empty state that is handled in our program
 
 (define nullreturn '())
 
