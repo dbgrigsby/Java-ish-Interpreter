@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+
+\title{README}
+\author{Naming Conventions and Documentation }
+\date{}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+
+\begin{document}
+\maketitle
+
+\section{Prefix and Postfix Conventions}
+\begin{enumerate}
+    \item Functions that are prefixed with "G\_" are global functions. G functions enforce encapsulation on a naming scheme level, so users do not get confused. Global functions can handle any arbitrary input to their parameters due to their input sanitation. \\
+    
+    A G function should only call helper functions within its code block. Code blocks implies scope.
+    
+\end{enumerate}
+
+\section{Return Conventions}
+\begin{enumerate}
+\item The return value of a function is denoted by an arrow, followed by return values separated by underscores. For example, often times, a G function returns a value\_state pair. This is denoted by: $\rightarrow (value\_state)$. The pair, or tuple, is a list of two elements. The first, being the value, and the second, being the state. \\
+
+Value-state pairs were often returned due to the side effect challenge. We were able to complete the side effect challenge without using $let$, due to our G functions returning the value of a passed in expression and updated state. \\
+\end{enumerate}
+
+\section{Atomic Statements}
+\begin{enumerate}
+    \item Atomic statements are statements that are valid either in condition statement (i.e. if (atomic statement) then...) or on their own (i.e (atomic statement);) At the moment, this is just assign statements, arithmetic expressions, boolean expressions, and comparison expressions.\\~\\
+(e.g. $(>\ x\ (\ +\ y\ 1))$ is an atomic statement) \\
+(e.g. $(==\ 3\ (=\ x (\ +\ x\ 1))$ is an atomic statement)\\
+(e.g $(=\ x\ 1)$ is an atomic statement)
+\end{enumerate}
+
+\section{Value and State naming}
+\begin{enumerate}
+    \item evaluate-parse-tree$\rightarrow$retval\_state runs the parsing of the program. 
+    
+    \item evaluate-statement$\rightarrow$retval\_state is our MState function. Our state functions follow this pattern. G-evaluate-if-statement$\rightarrow$retval\_state is equivalent to MState-if. G-evaluate-while-statement$\rightarrow$retval\_state is equivalent to MState-while. And so on.
+    
+    \item G-eval-atomic-statement$\rightarrow$value\_state is most equivalent to MValue. Our value functions follow this pattern. G-eval-assign$\rightarrow$value\_state is equivalent to MState-assign. eval-boolean-expr-uni$\rightarrow$value\_state, along with our other similar boolean functions of this nature, is equivalent to Mvalue-boolean. And so on.
+\end{enumerate}
+
+
+
+
+
+\end{document}
