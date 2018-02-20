@@ -59,7 +59,7 @@
     (cond
       ; not all programs/ segments must end in return
       ; empty list should return the state (ie: at the end of an if statement's statements)
-      ((null? program) (cons '() (list state)))
+      ((null? program) (cons nullreturn (list state)))
       ((not (list? program)) (error "Invalid program syntax"))
       ((not (null? (get-value-from-pair (evaluate-statement->retval_state (program-head program) state))))
        (evaluate-statement->retval_state (program-head program) state))
@@ -75,10 +75,10 @@
     (cond
       ((null? arglist) (error "Not a statement"))
       ((eq? 'return (get-upcoming-statement-name arglist)) (G-evaluate-return-statement->retvalue_state arglist state))
-      ((eq? 'var (get-upcoming-statement-name arglist)) (cons '() (list (G-evaluate-var-declare-statement->state arglist state))))
-      ((eq? 'while (get-upcoming-statement-name arglist)) (G-evaluate-while-statement->retval_state arglist state '()))
+      ((eq? 'var (get-upcoming-statement-name arglist)) (cons nullreturn (list (G-evaluate-var-declare-statement->state arglist state))))
+      ((eq? 'while (get-upcoming-statement-name arglist)) (G-evaluate-while-statement->retval_state arglist state nullreturn))
       ((eq? 'if (get-upcoming-statement-name arglist)) (G-evaluate-if-statement->retval_state arglist state))
-      (else (cons '() (list (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))))
+      (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))))
 
 ; Important section helper functions for abstraction are defined below
 (define program-head car)
@@ -147,7 +147,7 @@
                                          (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))
 
       ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-      (else (cons '() (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))))))
+      (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))))))
 
 (define get-if-else
   (lambda (arglist)
@@ -200,7 +200,7 @@
            (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))
 
        ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-       (else (cons '() (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
+       (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
 
 
 ; Important section helper functions for abstraction are defined below
@@ -746,7 +746,7 @@
   (lambda (variable state)
     (cond
       ((null? state) (error "State is empty"))
-      ((null? (car state)) (error "Variable not found in state"))
+      ((null? (get-variable-section-state state)) (error "Variable not found in state"))
       ((eq? (get-state-variable-head state) variable)
        (get-state-value-head state))
       (else (variable-value-lookup variable (get-tail-state state))))))
