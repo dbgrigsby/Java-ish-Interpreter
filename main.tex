@@ -1,6 +1,6 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=.5in]{geometry}
 
 \title{README}
 \author{Naming Conventions and Documentation }
@@ -16,15 +16,15 @@
 \begin{enumerate}
     \item Functions that are prefixed with "G\_" are global functions. G functions enforce encapsulation on a naming scheme level, so users do not get confused. Global functions can handle any arbitrary input to their parameters due to their input sanitation. \\
     
-    A G function should only call helper functions within its code block. Code blocks implies scope.
-    
+   \item  A G function should only call helper functions within its code block. Code blocks implies scope.
 \end{enumerate}
+
 
 \section{Return Conventions}
 \begin{enumerate}
 \item The return value of a function is denoted by an arrow, followed by return values separated by underscores. For example, often times, a G function returns a value\_state pair. This is denoted by: $\rightarrow (value\_state)$. The pair, or tuple, is a list of two elements. The first, being the value, and the second, being the state. \\
 
-Value-state pairs were often returned due to the side effect challenge. We were able to complete the side effect challenge without using $let$, due to our G functions returning the value of a passed in expression and updated state. \\
+\item Value-state pairs were often returned due to the side effect challenge. We were able to complete the side effect challenge without using $let$, due to our G functions returning the value of a passed in expression and updated state. \\
 \end{enumerate}
 
 \section{Atomic Statements}
@@ -42,6 +42,11 @@ Value-state pairs were often returned due to the side effect challenge. We were 
     \item evaluate-statement$\rightarrow$retval\_state is our MState function. Our state functions follow this pattern. G-evaluate-if-statement$\rightarrow$retval\_state is equivalent to MState-if. G-evaluate-while-statement$\rightarrow$retval\_state is equivalent to MState-while. And so on.
     
     \item G-eval-atomic-statement$\rightarrow$value\_state is most equivalent to MValue. Our value functions follow this pattern. G-eval-assign$\rightarrow$value\_state is equivalent to MState-assign. eval-boolean-expr-uni$\rightarrow$value\_state, along with our other similar boolean functions of this nature, is equivalent to Mvalue-boolean. And so on.
+\end{enumerate}
+
+\section{Testing}
+\begin{enumerate}
+\item Our testing suite, $tester.scm$, is available for your use. Simply run $tester.scm$ in the same directory as the parser, lexer, and interpreter.
 \end{enumerate}
 
 
