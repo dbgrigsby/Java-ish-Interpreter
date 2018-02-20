@@ -1,12 +1,22 @@
+; Brett Johnson
+; Adam Beck
+; Daniel Grigsby
+
 (load "simpleParser.scm")
 
 ; This section reads code from a file, parses it to a list,
 ; interprets it and returns the return value or error
 
+(define initstate
+  (lambda ()
+    '(() ()))) ; '() is also a valid empty state that is handled in our program
+
+(define nullreturn '())
+
 (define interpret
   (lambda (filename)
     (with-handlers ([exn:fail? error->handler])
-      (output->formatter (evaluate-parse-tree->retval_state (parser filename) `(()()))))))
+      (output->formatter (evaluate-parse-tree->retval_state (parser filename) initstate)))))
 
 ; From (value state) ->> value
 ; If value is #t or #f, parses to correct string literal
