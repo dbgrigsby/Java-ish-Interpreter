@@ -1,4 +1,14 @@
-# Created by https://www.gitignore.io/api/scheme
+# Created by https://www.gitignore.io/api/scheme,racket
+
+### Racket ###
+*.rkt~
+*.rkt.bak
+\#*.rkt#
+\#*.rkt#*#
+*.dep
+*.zo
+
+compiled
 
 ### Scheme ###
 *.ss~
@@ -9,10 +19,6 @@
 *.scm#*
 .#*.scm
 
-# End of https://www.gitignore.io/api/scheme
 
-### WINDOWS ###
-*.bak
+# End of https://www.gitignore.io/api/scheme,racket
 
-#### MAC ###
-.DS_Store

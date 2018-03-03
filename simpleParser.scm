@@ -1,6 +1,6 @@
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "lex.scm") line and uncomment the (require "lex.scm") line
-;#lang racket
-;(provide (all-defined-out))
+#lang racket
+(provide (all-defined-out))
 
 ; A simple parser for a Java-ish language
 ; EECS 345: Programming Language Concepts
@@ -14,8 +14,8 @@
 ;
 ; The return value is a parse tree in list format
 
-(load "lex.scm")
-;(require "lex.scm")
+;(load "lex.scm")
+(require "lex.scm")
 
 (define parser
   (lambda (filename)
@@ -165,8 +165,8 @@
   (lambda ()
      (let* ((firstoperand (value-parse))
 	    (op (get-next-symbol)))
-       (if (and (eq? (car op) 'BINARY-OP) 
-                (or (eq? (cdr op) '==) 
+       (if (and (eq? (car op) 'BINARY-OP)
+                (or (eq? (cdr op) '==)
                     (eq? (cdr op) '<)
                     (eq? (cdr op) '>)
                     (eq? (cdr op) '<=)
@@ -186,7 +186,7 @@
           (begin
             (unget-next-symbol)
             (cons 'var lhs))))))
-    
+
 
 ; parse an assignment statement: a left-hand-side followed by an = followed by a value
 
@@ -338,5 +338,3 @@
           ((eq? (car firstsymbol) 'ID) (cdr firstsymbol))
           ((eq? (car firstsymbol) 'BOOLEAN) (cdr firstsymbol))
           (else (error 'parser "Unknown statmement")))));)
-
-

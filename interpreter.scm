@@ -1,8 +1,9 @@
 ; Brett Johnson
 ; Adam Beck
 ; Daniel Grigsby
-
-(load "simpleParser.scm")
+#lang racket
+(require "simpleParser.scm")
+(provide (all-defined-out))
 
 ; This section reads code from a file, parses it to a list,
 ; interprets it and returns the return value or error

@@ -1,11 +1,17 @@
-(load "interpreter.scm")
+#lang racket
+(require "interpreter.scm")
+
+
+; Tester
 
 ; General testing framework
 (define test
   (lambda (filename expected-output)
     (if (eq? (interpret filename) expected-output)
         (string-append "Passed " filename)
-        (string-append "Failed " filename " ! Expected output: " (number->string expected-output) ", Interpreter output: " (symbol->string (interpret filename))))))
+        (string-append "Failed " filename
+          ", ! Expected output: " (number->string expected-output)
+            ", Interpreter output: " (symbol->string (interpret filename))))))
 
 ; Tests 1
 (newline)(newline)
