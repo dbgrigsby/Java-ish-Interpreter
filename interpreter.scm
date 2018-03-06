@@ -3,6 +3,7 @@
 ; Daniel Grigsby
 #lang racket
 (require "simpleParser.scm")
+(require "expression-ops.scm")
 (provide (all-defined-out))
 
 ; This section reads code from a file, parses it to a list,
@@ -553,58 +554,6 @@
            (get-value-from-pair (G-value-lookup->value_state arg2
                                                             (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
           (list (get-state-from-pair (G-value-lookup->value_state arg2 (get-state-from-pair (G-value-lookup->value_state arg1 state))))))))
-
-; this function takes a boolean operator (ie: !) and returns the actual function
-; this translation is for 1 argument boolean expressions
-(define boolean-operator-to-function-uni
-  (lambda (op)
-    (cond
-      ((eq? op '!) (lambda (arg1) (not arg1)))
-      (else (error "unsupported unary boolean expression")))))
-
-; this function takes a math operator ie: -> along with a boolean is-int that specifies whether the values are integers
-; this translation is for 1 argument math expressions
-(define math-operator-to-function-uni
-  (lambda (op is-int)
-    (cond
-      ((eq? op '-) -)
-      (else (error "invalid unary math operator")))))
-
-; this function takes a math operator ie: +, ->, * ... along with a boolean is-int that specifies whether the values are integers
-; this translation is for 2 argument math expressions
-(define math-operator-to-function-multi
-  (lambda (op is-int)
-    (cond
-      ((eq? op '+) +)
-      ((eq? op '*) *)
-      ((eq? op '-) -)
-      ((and (eq? op '/) is-int) quotient)
-      ((eq? op '/) /)
-      ((and (eq? op '%) is-int) modulo)
-      ((eq? op '%) (error "modulo % only works on integers"))
-      (else (error "invalid math operator")))))
-
-; this function takes a boolean operator (ie: &&, ||, ...) and returns the actual function
-; this translation is for 2 argument boolean expressions
-(define boolean-operator-to-function-multi
-  (lambda (op)
-    (cond
-      ((eq? op '&&) (lambda (arg1 arg2)
-                      (and arg1 arg2)))
-      ((eq? op '||) (lambda (arg1 arg2)
-                      (or arg1 arg2)))
-      (else (error "unsupported boolean expression")))))
-
-(define compare-operator-to-function-multi
-  (lambda (op)
-    (cond
-      ((eq? op '==) equal?)
-      ((eq? op '!=) (lambda (arg1 arg2) (not (equal? arg1 arg2))))
-      ((eq? op '<) <)
-      ((eq? op '>) >)
-      ((eq? op '<=) <=)
-      ((eq? op '>=) >=)
-      (else (error "invalid comparison operator")))))
 
 
 
