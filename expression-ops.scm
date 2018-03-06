@@ -5,6 +5,47 @@
 #lang racket
 (provide (all-defined-out))
 
+(define G-expr?
+  (lambda (arglist)
+    (cond
+      ((math-expr? (get-op-from-expr arglist)) #t)
+      ((boolean-expr? (get-op-from-expr arglist)) #t)
+      ((compare-expr? (get-op-from-expr arglist)) #t)
+      (else #f))))
+      
+(define get-op-from-expr car)
+
+(define math-expr?
+  (lambda (op)
+    (cond
+      ((eq? op '+) #t)
+      ((eq? op '-) #t)
+      ((eq? op '*) #t)
+      ((eq? op '/) #t)
+      ((eq? op '%) #t)
+      (else #f))))
+
+(define boolean-expr?
+  (lambda (op)
+    (cond
+      ((eq? op '&&) #t)
+      ((eq? op '||) #t)
+      ((eq? op '!) #t)
+      (else #f))))
+
+(define compare-expr?
+  (lambda (op)
+    (cond
+      ((eq? op '==) #t)
+      ((eq? op '!=) #t)
+      ((eq? op '<) #t)
+      ((eq? op '>) #t)
+      ((eq? op '<=) #t)
+      ((eq? op '>=) #t)
+      (else #f))))
+
+
+
 ; Determines whether a boolean in java boolean notation was encountered
 (define java-boolean?
   (lambda (value)
