@@ -1,4 +1,3 @@
-
 ; Brett Johnson
 ; Adam Beck
 ; Daniel Grigsby
@@ -19,9 +18,6 @@
     (cond
       ((or (null? state) (equal? state initstate)) #t)
       (else #f))))
-      
-      
-    
 
 ; Interpretation loop section
 
@@ -537,21 +533,17 @@
   (lambda (variable-name state)
     (cond
       ((state-empty? state) #f)
-      (else (member*? variable-name state)))))
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) variable-name) #t)
+      (else (G-declared? variable-name (get-tail-scope state))))))
 
-(define member*?
-  (lambda (variable state)
-    (cond
-      ((state-empty? state) #f)
-      ((member? (get-variable-section-state (get-top-scope state)) variable) #t)
-      (else (member*? variable (get-tail-scope state))))))
 
-(define member?
+; tests whether a variable is declared in a given scope, which is a state in the list of states we have.
+(define declared-in-scope?
   (lambda (lis variable)
     (cond
       ((null? lis) #f)
       ((eq? (get-variable-section-head lis) variable) #t)
-      (else (member? (get-variable-section-tail lis) variable)))))
+      (else (declared-in-scope? (get-variable-section-tail lis) variable)))))
 
 ;tests whether variable is declared and initialized
 (define G-initialized?
@@ -562,6 +554,50 @@
       (else #t))))
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+; Adding/removing state section
+; This section helps other sections affect the state with scoping rules
+(define G-add-scope-to-state->state
+  (lambda (state)
+    (cons (get-top-scope initstate) state)))
+
+(define G-remove-scope-from-state->state
+  (lambda (state)
+    (cond
+      ((state-empty? state) (error "The main scope can't be removed!"))
+      ((null? (get-tail-scope state)) initstate)
+      (else (get-tail-scope state)))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; Pushing state section
+; This section will handle the logic of pushing to a state, looking up, and updating values from variables
 ; adds variable and its value to state or over->writes it
 ; If the value is a variable, the value of this variable is found and pushed to the state
 ; (e.g. if we are pushing (x y) and y = 3, we push (x 3) to the state
@@ -588,7 +624,7 @@
        (list (list (list variable)
              (list number))))
 
-      ((member*? variable state) (update-variable variable number state))
+      ((G-declared? variable state) (update-variable variable number state))
       (else
        (cons
         (list
@@ -600,7 +636,7 @@
 (define update-variable
   (lambda (variable number state)
     (cond
-      ((member? (get-variable-section-state (get-top-scope state)) variable)
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) variable)
        (cons (update-variable-in-scope variable number (get-top-scope state))
              (get-tail-scope state)))
       (else (cons (get-top-scope state) (update-variable variable number (get-tail-scope state)))))))
@@ -637,7 +673,7 @@
   (lambda (variable state)
     (cond
       ((state-empty? state) (error "State is empty"))
-      ((member? (get-variable-section-state (get-top-scope state)) variable)
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) variable)
        (lookup-variable-value-in-scope variable (get-top-scope state)))
       (else (variable-value-lookup variable (get-tail-scope state))))))
 
