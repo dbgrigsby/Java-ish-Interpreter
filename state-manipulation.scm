@@ -49,7 +49,7 @@
       ;((eq? 'begin (get-upcoming-statement-name arglist)) (G-evaluate-block-statement->retval_state arglist state))
       ((eq? 'begin (get-upcoming-statement-name arglist))
          (list
-           (get-value-from-pair (evaluate-parse-tree->retval_state (cdr arglist) (G-add-scope-to-state->state state)))
+           '()
            (get-tail-scope (get-state-from-pair (evaluate-parse-tree->retval_state (cdr arglist) (G-add-scope-to-state->state state))))))
       (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))))
 
