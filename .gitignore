@@ -1,5 +1,7 @@
 # Created by https://www.gitignore.io/api/scheme,racket
 
+.DS_Store
+
 ### Racket ###
 *.rkt~
 *.rkt.bak

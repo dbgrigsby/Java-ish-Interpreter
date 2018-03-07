@@ -17,7 +17,7 @@
 (define state-empty?
   (lambda (state)
     (cond
-      ((or (null? state) (equal? (get-top-scope state) (get-top-scope initstate))) #t)
+      ((or (null? state) (equal? state initstate)) #t)
       (else #f))))
       
       
