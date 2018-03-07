@@ -9,11 +9,19 @@
 
 
 
-(define initstate '(() ())) ; '() is also a valid empty state that is handled in our program
-
+(define initstate '( (() ()) ))
 (define nullreturn '())
+(define get-top-scope car)
+(define get-tail-scope cdr)
 
-
+(define state-empty?
+  (lambda (state)
+    (cond
+      ((or (null? state) (equal? (get-top-scope state) (get-top-scope initstate))) #t)
+      (else #f))))
+      
+      
+    
 
 ; Interpretation loop section
 
@@ -528,10 +536,22 @@
 (define G-declared?
   (lambda (variable-name state)
     (cond
-      ((null? state) #f)
-      ((null? (get-variable-section-state state)) #f)
-      ((eq? (get-state-variable-head state) variable-name) #t)
-      (else (G-declared? variable-name (get-tail-state state))))))
+      ((state-empty? state) #f)
+      (else (member*? variable-name state)))))
+
+(define member*?
+  (lambda (variable state)
+    (cond
+      ((state-empty? state) #f)
+      ((member? (get-variable-section-state (get-top-scope state)) variable) #t)
+      (else (member*? variable (get-tail-scope state))))))
+
+(define member?
+  (lambda (lis variable)
+    (cond
+      ((null? lis) #f)
+      ((eq? (get-variable-section-head lis) variable) #t)
+      (else (member? (get-variable-section-tail lis) variable)))))
 
 ;tests whether variable is declared and initialized
 (define G-initialized?
@@ -541,6 +561,7 @@
       ((null? (variable-value-lookup variable-name state)) #f)
       (else #t))))
 
+
 ; adds variable and its value to state or over->writes it
 ; If the value is a variable, the value of this variable is found and pushed to the state
 ; (e.g. if we are pushing (x y) and y = 3, we push (x 3) to the state
@@ -549,6 +570,8 @@
 (define G-push-state->state
   (lambda (variable value state)
     (cond
+      ; If the state is empty, push it to it
+      ((state-empty? state) (list (list (list variable) (list value))))
       ; If the value is a number, null, or boolean, push to the state
       ((or (number? value) (null? value) (boolean? value))
        (push-variable-as-literal->state variable value state))
@@ -561,30 +584,41 @@
   (lambda (variable number state)
     (cond
       ; If the state is empty, push to the state
-      ((null? state)
-       (list (list variable)
-             (list number)))
-      ((null? (get-variable-section-state state))
-       (list (list variable)
-             (list number)))
+      ((state-empty? state)
+       (list (list (list variable)
+             (list number))))
 
-      ; If the variable head of the state equals the variable we are tryinig to push,
-      ; Update the variable's value
+      ((member*? variable state) (update-variable variable number state))
+      (else
+       (cons
+        (list
+         (cons variable (get-variable-section-state (get-top-scope state)))
+         (cons number (get-value-section-state (get-top-scope state))))
+        (get-tail-scope state))))))
+
+; precondition: the variable is somehwere in the state
+(define update-variable
+  (lambda (variable number state)
+    (cond
+      ((member? (get-variable-section-state (get-top-scope state)) variable)
+       (cons (update-variable-in-scope variable number (get-top-scope state))
+             (get-tail-scope state)))
+      (else (cons (get-top-scope state) (update-variable variable number (get-tail-scope state)))))))
+
+(define update-variable-in-scope
+  (lambda (variable number state)
+    (cond
       ((eq? (get-state-variable-head state) variable)
        (list (cons variable
                    (get-state-variable-tail state))
              (cons number
                    (get-state-value-tail state))))
-
-      ; If the variable head doesn't equal the variable we are trying to push, keep searching for it
       (else (append-state
              (get-head-state state)
-             (push-variable-as-literal->state variable
-                                             number
-                                             (get-tail-state state)))))))
+             (update-variable-in-scope variable number (get-tail-state state)))))))
 
-
-
+(define get-variable-section-head car)
+(define get-variable-section-tail cdr)
 
 ; appends a head state to a tail state
 ; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))
@@ -602,11 +636,17 @@
 (define variable-value-lookup
   (lambda (variable state)
     (cond
-      ((null? state) (error "State is empty"))
-      ((null? (get-variable-section-state state)) (error "Variable not found in state"))
+      ((state-empty? state) (error "State is empty"))
+      ((member? (get-variable-section-state (get-top-scope state)) variable)
+       (lookup-variable-value-in-scope variable (get-top-scope state)))
+      (else (variable-value-lookup variable (get-tail-scope state))))))
+
+(define lookup-variable-value-in-scope
+  (lambda (variable state)
+    (cond
       ((eq? (get-state-variable-head state) variable)
        (get-state-value-head state))
-      (else (variable-value-lookup variable (get-tail-state state))))))
+      (else (lookup-variable-value-in-scope variable (get-tail-state state))))))
 
 ; this function takes values (integers, strings, variables, ...) and returns their type
 ; for now it only handles any atomic statement
