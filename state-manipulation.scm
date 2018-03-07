@@ -545,6 +545,7 @@
 ; If the value is a variable, the value of this variable is found and pushed to the state
 ; (e.g. if we are pushing (x y) and y = 3, we push (x 3) to the state
 ; returns the new state
+; precondition: value not a variable
 (define G-push-state->state
   (lambda (variable value state)
     (cond
@@ -552,7 +553,7 @@
       ((or (number? value) (null? value) (boolean? value))
        (push-variable-as-literal->state variable value state))
       ; If the value is not a number, push the value of this variable to the state
-      (else (push-variable-as-variable->state variable value state)))))
+      (else (error "Value is a variable, expected to be value")))))
 
 ; Pushes a variable and a number to the state, or updates the state if the variable is there
 ; Returns the updated state
@@ -583,17 +584,6 @@
                                              (get-tail-state state)))))))
 
 
-; Pushes a variable and the value of the variable's value to the state, or updates the state if the variable is there
-; Precondition: Value is not null
-; Returns the updated state
-(define push-variable-as-variable->state
-  (lambda (variable value state)
-    (cond
-      ((not (G-declared? value state))
-       (error "Initialized variable value is an undeclared variable"))
-      (else (push-variable-as-variable->state variable
-                                             (get-value-from-pair (G-value-lookup->value_state value state))
-                                             state)))))
 
 
 ; appends a head state to a tail state
