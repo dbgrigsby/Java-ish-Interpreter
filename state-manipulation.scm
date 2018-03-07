@@ -5,7 +5,7 @@
 (provide (all-defined-out))
 
 (require "expression-ops.scm")
-
+(require "state-structs.scm")
 
 
 (define initstate '( (() ()) ))
@@ -22,36 +22,51 @@
 ; Interpretation loop section
 
 ; Main evaluation of parse tree function
-(define evaluate-parse-tree->retval_state
+(define evaluate-parse-tree->retval
   (lambda (program state)
-    (cond
-      ; not all programs/ segments must end in return
-      ; empty list should return the state (ie: at the end of an if statement's statements)
-      ((null? program) (cons nullreturn (list state)))
-      ((not (list? program)) (error "Invalid program syntax"))
-      ((not (null? (get-value-from-pair (evaluate-statement->retval_state (program-head program) state))))
-       (evaluate-statement->retval_state (program-head program) state))
-      ((pair? (program-head program))
-       (evaluate-parse-tree->retval_state (program-tail program)
-                                         (get-state-from-pair (evaluate-statement->retval_state (program-head program) state))))
-      (else (error "Invalid program syntax")))))
+    (call/cc
+     (lambda (return)
+       (cond
+         ; not all programs/ segments must end in return
+         ; empty list should return the state (ie: at the end of an if statement's statements)
+         ((null? program) '())
+         ((not (list? program)) (error "Invalid program syntax"))
+      
+         (else (evaluate-statement-list->state program state
+                                               (cfuncs return identity identity identity))))))))
 
+(define evaluate-statement-list->state
+  (lambda (program state cfuncsinstance)
+    (cond
+      ((null? program) state)
+      ((not (list? program)) (error "Invalid program syntax"))
+      ((pair? (program-head program))
+       (evaluate-statement-list->state
+        (program-tail program)
+        (evaluate-statement->state (program-head program) state cfuncsinstance)
+        cfuncsinstance))
+      (else (error "Invalid statement list syntax")))))
 
 ; Returns state updated after evaluating pair
-(define evaluate-statement->retval_state
-  (lambda (arglist state)
+(define evaluate-statement->state
+  (lambda (arglist state cfuncsinstance)
     (cond
       ((null? arglist) (error "Not a statement"))
-      ((eq? 'return (get-upcoming-statement-name arglist)) (G-evaluate-return-statement->retvalue_state arglist state))
-      ((eq? 'var (get-upcoming-statement-name arglist)) (cons nullreturn (list (G-evaluate-var-declare-statement->state arglist state))))
-      ((eq? 'while (get-upcoming-statement-name arglist)) (G-evaluate-while-statement->retval_state arglist state nullreturn))
-      ((eq? 'if (get-upcoming-statement-name arglist)) (G-evaluate-if-statement->retval_state arglist state))
-      ;((eq? 'begin (get-upcoming-statement-name arglist)) (G-evaluate-block-statement->retval_state arglist state))
+      ((eq? 'return (get-upcoming-statement-name arglist))
+       ((cfuncs-return cfuncsinstance)
+        (get-value-from-pair (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state))))
+      ((eq? 'var (get-upcoming-statement-name arglist))
+       (G-evaluate-var-declare-statement->state arglist state))
+      ((eq? 'while (get-upcoming-statement-name arglist))
+       (G-evaluate-while-statement->state arglist state cfuncsinstance))
+      ((eq? 'if (get-upcoming-statement-name arglist))
+       (G-evaluate-if-statement->state arglist state cfuncsinstance))
       ((eq? 'begin (get-upcoming-statement-name arglist))
-         (list
-           '()
-           (get-tail-scope (get-state-from-pair (evaluate-parse-tree->retval_state (cdr arglist) (G-add-scope-to-state->state state))))))
-      (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))))
+       (get-tail-scope (evaluate-statement-list->state
+                        (cdr arglist)
+                        (G-add-scope-to-state->state state)
+                        cfuncsinstance)))
+      (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
 
 ; Important section helper functions for abstraction are defined below
 (define program-head car)
@@ -65,31 +80,6 @@
 
 
 
-; Evaluate Block section
-
-(define G-evaluate-block-statement->retval_state
-  (lambda (argslist state)
-    (cond
-      ((evaluate-parse-tree->retval_state (rest-of-program argslist)
-        (G-remove-scope-from-state->state
-          (get-state-from-pair
-            (evaluate-parse-tree->retval_state
-              (block-statements argslist) (G-add-scope-to-state->state state)))))))))
-
-(define block-statements cdr)
-(define rest-of-program cdr)
-
-
-
-
-
-; return statement section
-
-; currently returns both state and value, should just return value
-; returns state and value for debug purposes
-(define G-evaluate-return-statement->retvalue_state
-  (lambda (arglist state)
-    (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state)))
 
 ; Important section helper functions for abstraction are defined below
 (define rest-of-return-statement cdr)
@@ -104,21 +94,26 @@
 ; if statement section
 
 ; Returns the value yielded from an if statement and the updated state
-(define G-evaluate-if-statement->retval_state
-  (lambda (arglist state)
+(define G-evaluate-if-statement->state
+  (lambda (arglist state cfuncsinstance)
     (cond
       ; If the if condition is true, evaluate the statements inside of it.
       ((get-value-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
 
        ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
-       (evaluate-parse-tree->retval_state (list (get-if-then arglist))
-                                         (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))
+       (evaluate-statement-list->state
+        (list (get-if-then arglist))
+        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
+        cfuncsinstance))
+      
       ((has-else? arglist)
-       (evaluate-parse-tree->retval_state (list (get-if-else arglist))
-                                         (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))
+       (evaluate-statement-list->state
+        (list (get-if-else arglist))
+        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
+        cfuncsinstance))
 
       ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-      (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))))))
+      (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))))
 
 (define get-if-else
   (lambda (arglist)
@@ -155,23 +150,20 @@
 ; while loop section
 
 ; Returns the value yielded from a while statement and the updated state
-(define G-evaluate-while-statement->retval_state
-  (lambda (arglist state return-val)
+(define G-evaluate-while-statement->state
+  (lambda (arglist state cfuncsinstance)
     (cond
-      ((not (null? return-val)) (cons return-val state))
-
       ; If the while condition is true, evaluate the statements inside of it.
       ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
-       (G-evaluate-while-statement->retval_state arglist
+       (G-evaluate-while-statement->state arglist
          ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
-         (get-state-from-pair (evaluate-parse-tree->retval_state (list (get-while-statement arglist))
-                                                                (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))
-         ; If any statement resulted in a return value, the first return gets executed by passing it into return-val when we recur
-         (get-value-from-pair (evaluate-parse-tree->retval_state (list (get-while-statement arglist))
-           (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))
+         (evaluate-statement-list->state
+          (list (get-while-statement arglist))
+          (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
+          cfuncsinstance)))
 
        ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-       (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
+       (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))
 
 
 ; Important section helper functions for abstraction are defined below

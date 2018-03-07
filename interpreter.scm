@@ -14,7 +14,7 @@
 (define interpret
   (lambda (filename)
     (with-handlers ([exn:fail? error->handler])
-      (output->formatter (evaluate-parse-tree->retval_state (parser filename) initstate)))))
+      (output->formatter (evaluate-parse-tree->retval (parser filename) initstate)))))
 
 ; From (value state) ->> value
 ; If value is #t or #f, parses to correct string literal
@@ -29,7 +29,7 @@
 ; All errors, despite their text, return 'error for test purposes
 (define error->handler
   (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error->handler] relies on this format.
-    'error))
+    exception))
 
 ; Important section helper functions for abstraction are defined below
 
