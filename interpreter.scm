@@ -29,7 +29,7 @@
 ; All errors, despite their text, return 'error for test purposes
 (define error->handler
   (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error->handler] relies on this format.
-    'error))
+    exception))
 
 ; Important section helper functions for abstraction are defined below
 

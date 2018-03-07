@@ -46,6 +46,11 @@
       ((eq? 'var (get-upcoming-statement-name arglist)) (cons nullreturn (list (G-evaluate-var-declare-statement->state arglist state))))
       ((eq? 'while (get-upcoming-statement-name arglist)) (G-evaluate-while-statement->retval_state arglist state nullreturn))
       ((eq? 'if (get-upcoming-statement-name arglist)) (G-evaluate-if-statement->retval_state arglist state))
+      ;((eq? 'begin (get-upcoming-statement-name arglist)) (G-evaluate-block-statement->retval_state arglist state))
+      ((eq? 'begin (get-upcoming-statement-name arglist))
+         (list
+           (get-value-from-pair (evaluate-parse-tree->retval_state (cdr arglist) (G-add-scope-to-state->state state)))
+           (get-tail-scope (get-state-from-pair (evaluate-parse-tree->retval_state (cdr arglist) (G-add-scope-to-state->state state))))))
       (else (cons nullreturn (list (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))))
 
 ; Important section helper functions for abstraction are defined below
@@ -59,6 +64,20 @@
 
 
 
+
+; Evaluate Block section
+
+(define G-evaluate-block-statement->retval_state
+  (lambda (argslist state)
+    (cond
+      ((evaluate-parse-tree->retval_state (rest-of-program argslist)
+        (G-remove-scope-from-state->state
+          (get-state-from-pair
+            (evaluate-parse-tree->retval_state
+              (block-statements argslist) (G-add-scope-to-state->state state)))))))))
+
+(define block-statements cdr)
+(define rest-of-program cdr)
 
 
 
@@ -74,13 +93,6 @@
 
 ; Important section helper functions for abstraction are defined below
 (define rest-of-return-statement cdr)
-
-
-
-
-
-
-
 
 
 
