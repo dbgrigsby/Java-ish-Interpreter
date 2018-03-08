@@ -52,21 +52,32 @@
   (lambda (arglist state cfuncsinstance)
     (cond
       ((null? arglist) (error "Not a statement"))
+      
       ((eq? 'return (get-upcoming-statement-name arglist))
        ((cfuncs-return cfuncsinstance)
         (get-value-from-pair (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state))))
+      
       ((eq? 'var (get-upcoming-statement-name arglist))
        (G-evaluate-var-declare-statement->state arglist state))
+      
       ((eq? 'while (get-upcoming-statement-name arglist))
        (G-evaluate-while-statement->state arglist state cfuncsinstance))
+      
       ((eq? 'if (get-upcoming-statement-name arglist))
        (G-evaluate-if-statement->state arglist state cfuncsinstance))
+      
       ((eq? 'begin (get-upcoming-statement-name arglist))
        (get-tail-scope (evaluate-statement-list->state
                         (cdr arglist)
                         (G-add-scope-to-state->state state)
                         cfuncsinstance)))
+      
+      ((eq? 'break (get-upcoming-statement-name arglist))
+       ((cfuncs-break cfuncsinstance) state))
+      
       (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
+
+
 
 ; Important section helper functions for abstraction are defined below
 (define program-head car)
@@ -152,10 +163,16 @@
 ; Returns the value yielded from a while statement and the updated state
 (define G-evaluate-while-statement->state
   (lambda (arglist state cfuncsinstance)
+    (call/cc
+     (lambda (break)
+       (evaluate-recursive-while arglist state (cfuncs-update-break cfuncsinstance break))))))
+
+(define evaluate-recursive-while
+  (lambda (arglist state cfuncsinstance)
     (cond
       ; If the while condition is true, evaluate the statements inside of it.
       ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
-       (G-evaluate-while-statement->state
+       (evaluate-recursive-while
         arglist
         ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
         (evaluate-statement-list->state
