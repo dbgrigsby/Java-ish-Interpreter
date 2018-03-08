@@ -170,21 +170,22 @@
 (define evaluate-inner-try-statement
   (lambda (arglist state finally cfuncsinstance)
     (finally
-     (evaluate-statement-list->state
-      (get-statements-from-try arglist)
-      (G-add-scope-to-state->state state)
-      (cfuncs-update-catch
-       cfuncsinstance
-       (lambda (s e)
-         (finally
-          (G-remove-scope-from-state->state
-          (evaluate-statement-list->state
-          (get-statements-from-catch (get-catch-from-try arglist))
-          (G-push-state->state
-           (get-exception-from-catch (get-catch-from-try arglist))
-           e
-           (G-add-scope-to-state->state s))
-          cfuncsinstance)))))))))
+     (G-remove-scope-from-state->state
+      (evaluate-statement-list->state
+       (get-statements-from-try arglist)
+       (G-add-scope-to-state->state state)
+       (cfuncs-update-catch
+        cfuncsinstance
+        (lambda (s e)
+          (finally
+           (G-remove-scope-from-state->state
+            (evaluate-statement-list->state
+             (get-statements-from-catch (get-catch-from-try arglist))
+             (G-push-state->state
+              (get-exception-from-catch (get-catch-from-try arglist))
+              e
+              (G-add-scope-to-state->state s))
+             cfuncsinstance))))))))))
     
     
 
