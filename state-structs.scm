@@ -8,7 +8,7 @@
    return
    break
    continue
-   throw
+   catch
    ))
 
 (define cfuncs-update-return
@@ -23,6 +23,6 @@
   (lambda (cfuncsinstance newfunc)
     (struct-copy cfuncs cfuncsinstance [continue newfunc])))
 
-(define cfuncs-update-throw
+(define cfuncs-update-catch
   (lambda (cfuncsinstance newfunc)
-    (struct-copy cfuncs cfuncsinstance [throw newfunc])))
+    (struct-copy cfuncs cfuncsinstance [catch newfunc])))

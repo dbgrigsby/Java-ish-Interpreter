@@ -62,6 +62,12 @@
       
       ((eq? 'var (get-upcoming-statement-name arglist))
        (G-evaluate-var-declare-statement->state arglist state))
+
+      ((eq? 'try (get-upcoming-statement-name arglist))
+       (G-evaluate-try-statement->state arglist state cfuncsinstance))
+
+      ((eq? 'throw (get-upcoming-statement-name arglist))
+       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state)))
       
       ((eq? 'while (get-upcoming-statement-name arglist))
        (G-evaluate-while-statement->state arglist state cfuncsinstance))
@@ -146,8 +152,64 @@
 
 
 
+(define G-evaluate-try-statement->state
+  (lambda (arglist state cfuncsinstance)
+    (call/cc
+     (lambda (throw)
+       (evaluate-inner-try-statement
+        arglist
+        state
+        (lambda (s) (throw
+                     (G-remove-scope-from-state->state
+                      (evaluate-statement-list->state
+                       (get-finally-from-try arglist)
+                       (G-add-scope-to-state->state s)
+                       cfuncsinstance))))
+        cfuncsinstance)))))
+
+(define evaluate-inner-try-statement
+  (lambda (arglist state endtry cfuncsinstance)
+    (endtry
+     (evaluate-statement-list->state
+      (get-statements-from-try arglist)
+      (G-add-scope-to-state->state state)
+      (cfuncs-update-catch
+       cfuncsinstance
+       (lambda (s)
+         (G-remove-scope-from-state->state
+          (evaluate-statement-list->state
+          (get-catch-from-try arglist)
+          (G-add-scope-to-state->state s)
+          (cfuncsinstance)))))))))
+    
+    
 
 
+
+(define inner-argument caar)
+
+(define get-statements-from-try
+  (lambda (arglist)
+    (cadr arglist)))
+
+(define get-catch-from-try
+  (lambda (arglist)
+    (cond
+      ((null? arglist) '())
+      ((not (list? (car arglist))) (get-catch-from-try (cdr arglist)))
+      ((eq? 'catch (inner-argument arglist)) (get-inner-catch-statement arglist))
+      (else (get-catch-from-try (cdr arglist))))))
+
+(define get-finally-from-try
+  (lambda (arglist)
+    (cond
+      ((null? arglist) '())
+      ((not (list? (car arglist))) (get-finally-from-try (cdr arglist)))
+      ((eq? 'finally (inner-argument arglist)) (get-inner-finally-statement arglist))
+      (else (get-finally-from-try (cdr arglist))))))
+    
+(define get-inner-catch-statement cdar)
+(define get-inner-finally-statement cdar)
 
 
 
