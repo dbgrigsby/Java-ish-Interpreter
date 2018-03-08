@@ -168,15 +168,15 @@
         cfuncsinstance)))))
 
 (define evaluate-inner-try-statement
-  (lambda (arglist state endtry cfuncsinstance)
-    (endtry
+  (lambda (arglist state finally cfuncsinstance)
+    (finally
      (evaluate-statement-list->state
       (get-statements-from-try arglist)
       (G-add-scope-to-state->state state)
       (cfuncs-update-catch
        cfuncsinstance
        (lambda (s e)
-         (endtry
+         (finally
           (G-remove-scope-from-state->state
           (evaluate-statement-list->state
           (get-statements-from-catch (get-catch-from-try arglist))
