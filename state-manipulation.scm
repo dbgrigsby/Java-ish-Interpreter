@@ -155,12 +155,14 @@
     (cond
       ; If the while condition is true, evaluate the statements inside of it.
       ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
-       (G-evaluate-while-statement->state arglist
-         ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
-         (evaluate-statement-list->state
-          (list (get-while-statement arglist))
-          (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
-          cfuncsinstance)))
+       (G-evaluate-while-statement->state
+        arglist
+        ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
+        (evaluate-statement-list->state
+         (list (get-while-statement arglist))
+         (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
+         cfuncsinstance)
+        cfuncsinstance))
 
        ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
        (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))
