@@ -57,6 +57,9 @@
        ((cfuncs-return cfuncsinstance)
         (get-value-from-pair (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state))))
       
+      ((eq? 'continue (get-upcoming-statement-name arglist))
+       ((cfuncs-continue cfuncsinstance) state))
+      
       ((eq? 'var (get-upcoming-statement-name arglist))
        (G-evaluate-var-declare-statement->state arglist state))
       
@@ -67,13 +70,14 @@
        (G-evaluate-if-statement->state arglist state cfuncsinstance))
       
       ((eq? 'begin (get-upcoming-statement-name arglist))
-       (get-tail-scope (evaluate-statement-list->state
-                        (cdr arglist)
-                        (G-add-scope-to-state->state state)
-                        cfuncsinstance)))
+       (G-remove-scope-from-state->state
+        (evaluate-statement-list->state
+         (cdr arglist)
+         (G-add-scope-to-state->state state)
+         cfuncsinstance)))
       
       ((eq? 'break (get-upcoming-statement-name arglist))
-       ((cfuncs-break cfuncsinstance) state))
+       ((cfuncs-break cfuncsinstance) (G-remove-scope-from-state->state state)))
       
       (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
 
@@ -169,20 +173,27 @@
 
 (define evaluate-recursive-while
   (lambda (arglist state cfuncsinstance)
-    (cond
-      ; If the while condition is true, evaluate the statements inside of it.
-      ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
-       (evaluate-recursive-while
-        arglist
-        ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
-        (evaluate-statement-list->state
-         (list (get-while-statement arglist))
-         (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
-         cfuncsinstance)
-        cfuncsinstance))
+    (call/cc
+     (lambda (endcontinue)
+       (cond
+         ; If the while condition is true, evaluate the statements inside of it.
+         ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
+          (evaluate-recursive-while
+           arglist
+           ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
+           (evaluate-statement-list->state
+            (list (get-while-statement arglist))
+            (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
 
-       ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-       (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))
+            ; s is a passed in state
+            (cfuncs-update-continue
+             cfuncsinstance
+             (lambda (s) (endcontinue (evaluate-recursive-while arglist s cfuncsinstance)))))
+
+           cfuncsinstance))
+
+         ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
+         (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
 
 
 ; Important section helper functions for abstraction are defined below
@@ -653,7 +664,7 @@
         (list
          (cons variable (get-variable-section-state (get-top-scope state)))
          (cons number (get-value-section-state (get-top-scope state))))
-        (get-tail-scope state))))))
+        (G-remove-scope-from-state->state state))))))
 
 ; precondition: the variable is somehwere in the state
 (define update-variable

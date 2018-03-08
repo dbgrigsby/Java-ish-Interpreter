@@ -10,8 +10,8 @@
     (if (eq? (interpret filename) expected-output)
         (string-append "Passed " filename)
         (string-append "Failed " filename
-          ", ! Expected output: " (number->string expected-output)
-            ", Interpreter output: " (symbol->string (interpret filename))))))
+          ", ! Expected output: " (if (number? expected-output) (number->string expected-output) (symbol->string expected-output))
+            ", Interpreter output: "  (if (number? (interpret filename)) (number->string (interpret filename)) (symbol->string  (interpret filename)))))))
 
 ; Tests 1
 (newline)(newline)
