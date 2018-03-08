@@ -203,6 +203,7 @@
   (lambda (arglist)
     (cond
       ((null? arglist) '())
+      ((null? (car arglist)) (get-catch-from-try (cdr arglist)))
       ((not (list? (car arglist))) (get-catch-from-try (cdr arglist)))
       ((eq? 'catch (inner-argument arglist)) (get-inner-catch-statement arglist))
       (else (get-catch-from-try (cdr arglist))))))
@@ -211,6 +212,7 @@
   (lambda (arglist)
     (cond
       ((null? arglist) '())
+      ((null? (car arglist)) (get-finally-from-try (cdr arglist)))
       ((not (list? (car arglist))) (get-finally-from-try (cdr arglist)))
       ((eq? 'finally (inner-argument arglist)) (get-inner-finally-statement arglist))
       (else (get-finally-from-try (cdr arglist))))))
