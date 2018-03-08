@@ -78,7 +78,7 @@
       ((eq? 'begin (get-upcoming-statement-name arglist))
        (G-remove-scope-from-state->state
         (evaluate-statement-list->state
-         (cdr arglist)
+         (rest-of-begin-statement arglist)
          (G-add-scope-to-state->state state)
          cfuncsinstance)))
       
@@ -104,6 +104,7 @@
 
 ; Important section helper functions for abstraction are defined below
 (define rest-of-return-statement cdr)
+(define rest-of-begin-statement cdr)
 
 
 
@@ -151,7 +152,7 @@
 (define get-if-then caddr)
 
 
-
+; try catch section
 (define G-evaluate-try-statement->state
   (lambda (arglist state cfuncsinstance)
     (call/cc
@@ -198,25 +199,20 @@
     (cadr arglist)))
 
 (define get-exception-from-catch caar)
-(define get-statements-from-catch cdr)
+(define get-statements-from-catch cadr)
 
 (define get-catch-from-try
   (lambda (arglist)
     (cond
-      ((null? arglist) '())
-      ((null? (car arglist)) (get-catch-from-try (cdr arglist)))
-      ((not (list? (car arglist))) (get-catch-from-try (cdr arglist)))
-      ((eq? 'catch (inner-argument arglist)) (get-inner-catch-statement arglist))
-      (else (get-catch-from-try (cdr arglist))))))
+      ((null? (caddr arglist)) '())
+      (else (get-inner-catch-statement (cddr arglist))))))
 
 (define get-finally-from-try
   (lambda (arglist)
     (cond
-      ((null? arglist) '())
-      ((null? (car arglist)) (get-finally-from-try (cdr arglist)))
-      ((not (list? (car arglist))) (get-finally-from-try (cdr arglist)))
-      ((eq? 'finally (inner-argument arglist)) (get-inner-finally-statement arglist))
-      (else (get-finally-from-try (cdr arglist))))))
+      ((null? (cadddr arglist)) '())
+      (else (get-inner-finally-statement (cdddr arglist))))))
+
     
 (define get-inner-catch-statement cdar)
 (define get-inner-finally-statement cdar)
