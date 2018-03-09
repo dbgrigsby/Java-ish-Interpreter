@@ -92,11 +92,6 @@
 
 
 
-
-
-
-
-
 ; if statement section
 
 ; Returns the value yielded from an if statement and the updated state
@@ -197,10 +192,6 @@
 
 
 
-
-
-
-
 ; while loop section
 
 ; Returns the value yielded from a while statement and the updated state
@@ -242,18 +233,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ; Variable declaration section
 ; Returns updated state after a declaration or initialization
 (define G-evaluate-var-declare-statement->state
@@ -283,18 +262,6 @@
 (define only-declare?
   (lambda (arglist)
     (null? (cddr arglist))))
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -346,16 +313,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ; eval-assign section
 ; this function evaluates assignment statements
 ; will returns value state pair
@@ -378,17 +335,6 @@
     (cond
       ((eq? (get-op-from-expr arglist) '=) #t)
       (else #f))))
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -535,18 +481,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ; state-interface section
 ; this function takes values (integers, strings, variables, expressions, ...) and returns their actual value
 ; for now it only handles int and bolean literals and expressions of the two
@@ -612,11 +546,6 @@
 
 
 
-
-
-
-
-
 ; Adding/removing state section
 ; This section helps other sections affect the state with scoping rules
 (define G-add-scope-to-state->state
@@ -629,15 +558,6 @@
       ((state-empty? state) (error "The main scope can't be removed!"))
       ((null? (get-tail-scope state)) initstate)
       (else (get-tail-scope state)))))
-
-
-
-
-
-
-
-
-
 
 
 
