@@ -5,6 +5,7 @@
 (require "simpleParser.scm")
 ;(require "expression-ops.scm")
 (require "state-manipulation.scm")
+(require "helpers.scm")
 (provide (all-defined-out))
 
 ; This section reads code from a file, parses it to a list,
