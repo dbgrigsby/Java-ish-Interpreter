@@ -64,7 +64,7 @@
        (G-evaluate-try-statement->state arglist state cfuncsinstance))
 
       ((eq? 'throw (get-upcoming-statement-name arglist))
-       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (cadr arglist)))
+       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (get-contents-of-throw arglist)))
 
       ((eq? 'while (get-upcoming-statement-name arglist))
        (G-evaluate-while-statement->state arglist state cfuncsinstance))
@@ -120,11 +120,11 @@
   (lambda (arglist)
     (cond
       ((not (has-else? arglist)) (error "no else statement"))
-      (else (cadddr arglist)))))
+      (else (get-args-after-if-else arglist)))))
 
 (define has-else?
   (lambda (arglist)
-    (pair? (cdddr arglist))))
+    (pair? (get-else-from-if-else arglist))))
 
 
 ; try catch section
@@ -165,29 +165,21 @@
 
 
 
-(define get-statements-from-try
-  (lambda (arglist)
-    (cadr arglist)))
 
-(define get-exception-from-catch caar)
-(define get-statements-from-catch cadr)
+
+
 
 (define get-catch-from-try
   (lambda (arglist)
     (cond
-      ((null? (caddr arglist)) '())
-      (else (get-inner-catch-statement (cddr arglist))))))
+      ((null? (get-catch-wrapper arglist)) '())
+      (else (get-inner-catch-statement (get-contents-of-catch arglist))))))
 
 (define get-finally-from-try
   (lambda (arglist)
     (cond
-      ((null? (cadddr arglist)) '())
-      (else (get-inner-finally-statement (cdddr arglist))))))
-
-
-
-
-
+      ((null? (get-finally-wrapper arglist)) '())
+      (else (get-inner-finally-statement (get-contents-of-finally arglist))))))
 
 
 
@@ -261,9 +253,7 @@
 
 (define only-declare?
   (lambda (arglist)
-    (null? (cddr arglist))))
-
-
+    (null? (get-declare-from-assign arglist))))
 
 
 
@@ -624,8 +614,6 @@
              (get-head-state state)
              (update-variable-in-scope variable number (get-tail-state state)))))))
 
-(define get-variable-section-head car)
-(define get-variable-section-tail cdr)
 
 ; appends a head state to a tail state
 ; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))

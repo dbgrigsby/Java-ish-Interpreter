@@ -33,6 +33,8 @@
 (define get-if-then caddr)
 
 
+(define get-declare-from-assign cddr)
+
 
 
 
@@ -42,6 +44,17 @@
 
 (define get-inner-catch-statement cdar)
 (define get-inner-finally-statement cdar)
+(define get-statements-from-try cadr)
+
+(define get-catch-wrapper caddr)
+
+(define get-contents-of-catch cddr)
+
+(define get-finally-wrapper cadddr)
+
+(define get-contents-of-finally cdddr)
+
+(define get-contents-of-throw cadr)
 
 
 
@@ -53,6 +66,11 @@
 ; Important section helper functions for abstraction are defined below
 (define get-var-name-from-declare-args cadr)
 (define truncate-var-name-from-declare cddr)
+
+(define get-args-after-if-else cadddr)
+(define get-else-from-if-else cdddr)
+
+
 
 
 
@@ -66,8 +84,11 @@
 (define get-state-from-pair cadr)
 (define get-value-from-pair car)
 
+(define get-variable-section-head car)
+(define get-variable-section-tail cdr)
 
-
+(define get-exception-from-catch caar)
+(define get-statements-from-catch cadr)
 
 ; The state is stored as a list of two lists
 ; (e.g. the head of the values for '((a b c) (1 2 3)) is 1, by calling caadr)
