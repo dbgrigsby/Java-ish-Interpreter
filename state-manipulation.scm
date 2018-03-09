@@ -6,12 +6,9 @@
 
 (require "expression-ops.scm")
 (require "state-structs.scm")
+(require "helpers.scm")
 
 
-(define initstate '( (() ()) ))
-(define nullreturn '())
-(define get-top-scope car)
-(define get-tail-scope cdr)
 
 (define state-empty?
   (lambda (state)
@@ -31,7 +28,7 @@
          ; empty list should return the state (ie: at the end of an if statement's statements)
          ((null? program) '())
          ((not (list? program)) (error "Invalid program syntax"))
-      
+
          (else (evaluate-statement-list->state program state
                                                (cfuncs return identity identity identity))))))))
 
@@ -52,14 +49,14 @@
   (lambda (arglist state cfuncsinstance)
     (cond
       ((null? arglist) (error "Not a statement"))
-      
+
       ((eq? 'return (get-upcoming-statement-name arglist))
        ((cfuncs-return cfuncsinstance)
         (get-value-from-pair (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state))))
-      
+
       ((eq? 'continue (get-upcoming-statement-name arglist))
        ((cfuncs-continue cfuncsinstance) state))
-      
+
       ((eq? 'var (get-upcoming-statement-name arglist))
        (G-evaluate-var-declare-statement->state arglist state))
 
@@ -67,44 +64,26 @@
        (G-evaluate-try-statement->state arglist state cfuncsinstance))
 
       ((eq? 'throw (get-upcoming-statement-name arglist))
-       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (cadr arglist)))
-      
+       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (get-contents-of-throw arglist)))
+
       ((eq? 'while (get-upcoming-statement-name arglist))
        (G-evaluate-while-statement->state arglist state cfuncsinstance))
-      
+
       ((eq? 'if (get-upcoming-statement-name arglist))
        (G-evaluate-if-statement->state arglist state cfuncsinstance))
-      
+
       ((eq? 'begin (get-upcoming-statement-name arglist))
        (G-remove-scope-from-state->state
         (evaluate-statement-list->state
          (rest-of-begin-statement arglist)
          (G-add-scope-to-state->state state)
          cfuncsinstance)))
-      
+
       ((eq? 'break (get-upcoming-statement-name arglist))
        ((cfuncs-break cfuncsinstance) (G-remove-scope-from-state->state state)))
-      
+
       (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
 
-
-
-; Important section helper functions for abstraction are defined below
-(define program-head car)
-(define program-tail cdr)
-
-
-; Returns the type of the upcoming statement in an arglist
-; (e.g. (var x (+ 1 2)) yields 'var)
-(define get-upcoming-statement-name car)
-
-
-
-
-
-; Important section helper functions for abstraction are defined below
-(define rest-of-return-statement cdr)
-(define rest-of-begin-statement cdr)
 
 
 
@@ -127,7 +106,7 @@
         (list (get-if-then arglist))
         (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
         cfuncsinstance))
-      
+
       ((has-else? arglist)
        (evaluate-statement-list->state
         (list (get-if-else arglist))
@@ -141,15 +120,11 @@
   (lambda (arglist)
     (cond
       ((not (has-else? arglist)) (error "no else statement"))
-      (else (cadddr arglist)))))
+      (else (get-args-after-if-else arglist)))))
 
 (define has-else?
   (lambda (arglist)
-    (pair? (cdddr arglist))))
-
-; Important section helper functions for abstraction are defined below
-(define get-if-cond cadr)
-(define get-if-then caddr)
+    (pair? (get-else-from-if-else arglist))))
 
 
 ; try catch section
@@ -187,45 +162,24 @@
               e
               (G-add-scope-to-state->state s))
              cfuncsinstance))))))))))
-    
-    
 
 
 
-(define inner-argument caar)
 
-(define get-statements-from-try
-  (lambda (arglist)
-    (cadr arglist)))
 
-(define get-exception-from-catch caar)
-(define get-statements-from-catch cadr)
+
 
 (define get-catch-from-try
   (lambda (arglist)
     (cond
-      ((null? (caddr arglist)) '())
-      (else (get-inner-catch-statement (cddr arglist))))))
+      ((null? (get-catch-wrapper arglist)) '())
+      (else (get-inner-catch-statement (get-contents-of-catch arglist))))))
 
 (define get-finally-from-try
   (lambda (arglist)
     (cond
-      ((null? (cadddr arglist)) '())
-      (else (get-inner-finally-statement (cdddr arglist))))))
-
-    
-(define get-inner-catch-statement cdar)
-(define get-inner-finally-statement cdar)
-
-
-
-
-
-
-
-
-
-
+      ((null? (get-finally-wrapper arglist)) '())
+      (else (get-inner-finally-statement (get-contents-of-finally arglist))))))
 
 
 
@@ -264,26 +218,6 @@
          (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
 
 
-; Important section helper functions for abstraction are defined below
-(define get-while-cond cadr)
-(define get-while-statement caddr)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -319,24 +253,7 @@
 
 (define only-declare?
   (lambda (arglist)
-    (null? (cddr arglist))))
-
-; Important section helper functions for abstraction are defined below
-(define get-var-name-from-declare-args cadr)
-(define truncate-var-name-from-declare cddr)
-
-
-
-
-
-
-
-
-
-
-
-
-
+    (null? (get-declare-from-assign arglist))))
 
 
 
@@ -378,27 +295,6 @@
       ((G-assign? arglist) #t)
       (else #f))))
 
-; Important section helper functions for abstraction are defined below
-(define arglist-head car)
-(define arglist-tail cdr)
-
-(define get-op-from-expr car)
-(define get-arg1-from-expr cadr)
-(define get-arg2-from-expr caddr)
-(define get-state-from-pair cadr)
-(define get-value-from-pair car)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -429,17 +325,6 @@
     (cond
       ((eq? (get-op-from-expr arglist) '=) #t)
       (else #f))))
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -586,18 +471,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ; state-interface section
 ; this function takes values (integers, strings, variables, expressions, ...) and returns their actual value
 ; for now it only handles int and bolean literals and expressions of the two
@@ -663,11 +536,6 @@
 
 
 
-
-
-
-
-
 ; Adding/removing state section
 ; This section helps other sections affect the state with scoping rules
 (define G-add-scope-to-state->state
@@ -680,15 +548,6 @@
       ((state-empty? state) (error "The main scope can't be removed!"))
       ((null? (get-tail-scope state)) initstate)
       (else (get-tail-scope state)))))
-
-
-
-
-
-
-
-
-
 
 
 
@@ -755,8 +614,6 @@
              (get-head-state state)
              (update-variable-in-scope variable number (get-tail-state state)))))))
 
-(define get-variable-section-head car)
-(define get-variable-section-tail cdr)
 
 ; appends a head state to a tail state
 ; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))
@@ -817,13 +674,3 @@
   (lambda (state)
     (list (get-state-variable-tail state)
           (get-state-value-tail state))))
-
-; The state is stored as a list of two lists
-; (e.g. the head of the values for '((a b c) (1 2 3)) is 1, by calling caadr)
-; (e.g. the tail of the variables for '((a b c) (1 2 3)) is (b c), by calling cdar)
-(define get-state-variable-head caar)
-(define get-state-variable-tail cdar)
-(define get-state-value-head caadr)
-(define get-state-value-tail cdadr)
-(define get-variable-section-state car)
-(define get-value-section-state cadr)
