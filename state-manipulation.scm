@@ -112,6 +112,9 @@
   (lambda (stmt1 stmt2 stmt3)
     ((and (eq? stmt1 'function) (eq? stmt2 'main) (eq? stmt3 `())))))
 
+(define G-eval-function->value_state 
+  (lambda (name args state) `(()())))
+
 
 ; if statement section
 
