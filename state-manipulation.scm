@@ -82,14 +82,35 @@
       ((eq? 'break (get-upcoming-statement-name arglist))
        ((cfuncs-break cfuncsinstance) (G-remove-scope-from-state->state state)))
 
+      ((eq? 'function (get-upcoming-statement-name arglist))
+        (G-define-function->state arglist state cfuncsinstance))
+
       (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
 
 
 
+; Function definition section
 
+(define G-define-function->state 
+  (lambda (arglist state cfuncsinstance)
+    `(()()))) ; Function header, no implementation
 
+(define function-descriptor caar)
+(define function-name cadar)
+(define function-params caddar)
+(define function-body (lambda (arglist) (car (cdddar arglist))))
 
+(define extract-main-method->method-body
+  (lambda (arglist)
+    (cond 
+      ((null? arglist) (error "no main method found"))
+      ((is-main-method? (function-descriptor arglist) (function-name arglist) (function-params arglist))
+        (function-body arglist))
+      (else (error "no main method found")))))
 
+(define is-main-method?
+  (lambda (stmt1 stmt2 stmt3)
+    ((and (eq? stmt1 'function) (eq? stmt2 'main) (eq? stmt3 `())))))
 
 
 ; if statement section
