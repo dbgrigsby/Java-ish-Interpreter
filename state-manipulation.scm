@@ -93,7 +93,7 @@
 
 (define G-define-function->state 
   (lambda (arglist state cfuncsinstance)
-    `(()()))) ; Function header, no implementation
+    (G-push-state->state (get-function-name arglist) (list (get-function-formal-args arglist) (get-function-body arglist)))))
 
 (define function-descriptor caar)
 (define function-name cadar)
