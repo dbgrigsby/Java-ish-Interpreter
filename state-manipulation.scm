@@ -92,8 +92,8 @@
 ; Function definition section
 
 (define G-define-function->state 
-  (lambda (arglist state cfuncsinstance))
-    `(()())) ; Function header, no implementation
+  (lambda (arglist state cfuncsinstance)
+    `(()()))) ; Function header, no implementation
 
 (define function-descriptor caar)
 (define function-name cadar)
@@ -105,8 +105,8 @@
     (cond 
       ((null? arglist) (error "no main method found"))
       ((is-main-method? (function-descriptor arglist) (function-name arglist) (function-params arglist))
-        (function-body argslist)))
-      (else (error "no main method found"))))
+        (function-body arglist))
+      (else (error "no main method found")))))
 
 (define is-main-method?
   (lambda (stmt1 stmt2 stmt3)
