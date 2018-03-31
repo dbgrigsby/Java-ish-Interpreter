@@ -86,3 +86,7 @@
 (define get-contents-of-throw cadr)
 (define get-exception-from-catch caar)
 (define get-statements-from-catch cadr)
+
+;functions section
+(define get-function-name car)
+(define get-function-actual-args cdr)
