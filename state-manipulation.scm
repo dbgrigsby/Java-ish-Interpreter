@@ -296,6 +296,7 @@
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state))
+      ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state))
       (else (error "not a valid atomic statement")))))
 
 
@@ -316,6 +317,15 @@
       ((G-assign? arglist) #t)
       (else #f))))
 
+
+; eval function atomic statement section
+(define is-funcall?
+  (lambda (arglist)
+    (eq? (arglist-head arglist) 'funcall)))
+
+(define eval-funcall->value_state
+  (lambda (arglist state)
+    (G-eval-function->value_state (get-function-name arglist) (get-function-actual-args arglist))))
 
 
 
