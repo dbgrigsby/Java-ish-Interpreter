@@ -93,7 +93,7 @@
 
 (define G-define-function->state 
   (lambda (arglist state cfuncsinstance)
-    (G-push-state->state (get-function-name arglist) (list (get-function-formal-args arglist) (get-function-body arglist)))))
+    `(()()))) ; Function header, no implementation
 
 (define function-descriptor caar)
 (define function-name cadar)
@@ -111,9 +111,6 @@
 (define is-main-method?
   (lambda (stmt1 stmt2 stmt3)
     ((and (eq? stmt1 'function) (eq? stmt2 'main) (eq? stmt3 `())))))
-
-(define G-eval-function->value_state 
-  (lambda (name args state) `(()())))
 
 
 ; if statement section
@@ -299,7 +296,6 @@
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state))
-      ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state))
       (else (error "not a valid atomic statement")))))
 
 
@@ -320,15 +316,6 @@
       ((G-assign? arglist) #t)
       (else #f))))
 
-
-; eval function atomic statement section
-(define is-funcall?
-  (lambda (arglist)
-    (eq? (arglist-head arglist) 'funcall)))
-
-(define eval-funcall->value_state
-  (lambda (arglist state)
-    (G-eval-function->value_state (get-function-name arglist) (get-function-actual-args arglist))))
 
 
 
@@ -604,7 +591,7 @@
       ; If the state is empty, push it to it
       ((state-empty? state) (list (list (list variable) (list value))))
       ; If the value is a number, null, or boolean, push to the state
-      ((or (number? value) (null? value) (boolean? value))
+      ((or (number? value) (null? value) (boolean? value) (list? value))
        (push-variable-as-literal->state variable value state))
       ; If the value is not a number, push the value of this variable to the state
       (else (error "Value is a variable, expected to be value")))))
@@ -618,7 +605,7 @@
       ((state-empty? state)
        (list (list (list variable)
              (list number))))
-
+      ; If it's been declared before, update the variable, if not, add it to the state
       ((G-declared? variable state) (update-variable variable number state))
       (else
        (cons
@@ -708,3 +695,27 @@
   (lambda (state)
     (list (get-state-variable-tail state)
           (get-state-value-tail state))))
+
+; crashes until (and including) the function is found in a given stack
+(define G-pop-scope-to-function->state
+  (lambda (fn state)
+    (cond
+      ((null? state) (error "function was not found in state"))
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
+      (else (cons (get-top-scope state) (G-pop-scope-to-function->state (get-tail-scope state)))))))
+
+; merge two states, the updated one after the function and the old state
+; the func state removes the top scope before returning to me, precondition.
+; The func state is smaller (or should be?) than the original state, so we have no way of pairing this up going in order
+; so reverse the two lists, and merge until the func runs out, then merge original into it
+; then reverse this all, either here, or in the method that calls this
+(define G-merge-states->state
+  (lambda (origin-state mod-state)
+      (reverse (merge (reverse origin-state) (reverse mod-state)))))
+
+; merges reversed two states
+(define merge
+  (lambda (orig-state mod-state)
+    (cond
+      ((null? mod-state) orig-state)
+      (else (cons (get-top-scope mod-state) (merge (get-tail-scope orig-state) (get-tail-scope mod-state)))))))
