@@ -26,3 +26,17 @@
 (define cfuncs-update-catch
   (lambda (cfuncsinstance newfunc)
     (struct-copy cfuncs cfuncsinstance [catch newfunc])))
+
+(define cfunds-wipe-all-but-catch
+  (lambda (cfuncsinstance))
+    (cfuncs-update-break
+      (cfuncs-update-continue 
+        (cfuncs-update-return cfuncsinstance identity)
+         identity)
+      identity))
+
+
+
+
+
+
