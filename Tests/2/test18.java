@@ -1,3 +1,4 @@
+function main() {
 var x = 10;
 var result = 1;
 
@@ -17,4 +18,4 @@ try {
 finally {
   result = result + x;
 }
-return result;
+return result;}
