@@ -102,24 +102,21 @@
 
 (define G-eval-function->value_state 
   (lambda (name args state)
+    (let* ((function-in-state (variable-value-lookup name state))
+           (evaluate-function-call
+            (evaluate-parse-tree->retval_state
+             (get-funcall-body function-in-state)
+             (G-add-arguments-to-state->state
+              (get-funcall-args function-in-state)
+              (evaluate-actual-args args state)
+              (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state))))))
     (list
-     (get-value-from-pair
-      (evaluate-parse-tree->retval_state
-       (get-funcall-body (variable-value-lookup name state))
-       (G-add-arguments-to-state->state
-        (get-funcall-args (variable-value-lookup name state))
-        (evaluate-actual-args args state)
-        (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state)))))
+     (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
       state
       (G-remove-scope-from-state->state
        (get-state-from-pair
-        (evaluate-parse-tree->retval_state
-         (get-funcall-body (variable-value-lookup name state))
-         (G-add-arguments-to-state->state
-          (get-funcall-args (variable-value-lookup name state))
-          (evaluate-actual-args args state)
-          (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state))))))))))
+        evaluate-function-call)))))))
 
 (define evaluate-actual-args-for-state
   (lambda (actual state)
@@ -446,9 +443,10 @@
 ; this function is for 1 argument math expressions
 (define eval-math-expr-int-uni->value_state
   (lambda (op arg1 state)
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)])
     (cons ((math-operator-to-function-uni op #t)
-           (get-value-from-pair (G-value-lookup->value_state arg1 state)))
-          (list (get-state-from-pair (G-value-lookup->value_state arg1 state))))))
+           (get-value-from-pair lookup-arg1))
+          (list (get-state-from-pair lookup-arg1))))))
 
 ; this function evaluates all 2 argument expressions
 ; it currently only evaluates ints and booleans
@@ -481,18 +479,18 @@
 ; Returns (value, updated->state)
 (define eval-boolean-expr-multi->value_state
   (lambda (op arg1 arg2 state)
-    (cond
-      ; We return a (value, state), hence the cons for the value and the state
-      ; The value is derived from applying the operator on arg1 and arg2
-      ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-      ((and (eq? (G-type-lookup arg1 state) 'boolean) (eq? (G-type-lookup arg2 state) 'boolean))
-       (cons ((boolean-operator-to-function-multi op)
-              (get-value-from-pair (G-value-lookup->value_state arg1
-                                                               state))
-              (get-value-from-pair (G-value-lookup->value_state arg2
-                                                               (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
-             (list (get-state-from-pair (G-value-lookup->value_state arg2 (get-state-from-pair (G-value-lookup->value_state arg1 state)))))))
-      (else (error "not valid types for boolean expression")))))
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1))])
+      (cond
+        ; We return a (value, state), hence the cons for the value and the state
+        ; The value is derived from applying the operator on arg1 and arg2
+        ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
+        ((and (eq? (G-type-lookup arg1 state) 'boolean) (eq? (G-type-lookup arg2 state) 'boolean))
+         (cons ((boolean-operator-to-function-multi op)
+                (get-value-from-pair lookup-arg1)
+                (get-value-from-pair lookup-arg2))
+               (list (get-state-from-pair lookup-arg2))))
+        (else (error "not valid types for boolean expression"))))))
 
 
 ; this function evaluates math expressions
@@ -513,12 +511,12 @@
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (cons ((math-operator-to-function-multi op #t)
-           (get-value-from-pair (G-value-lookup->value_state arg1
-                                                            state))
-           (get-value-from-pair (G-value-lookup->value_state arg2
-                                                            (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
-          (list (get-state-from-pair (G-value-lookup->value_state arg2 (get-state-from-pair (G-value-lookup->value_state arg1 state))))))))
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1))])
+      (cons ((math-operator-to-function-multi op #t)
+             (get-value-from-pair lookup-arg1)
+             (get-value-from-pair lookup-arg2))
+            (list (get-state-from-pair lookup-arg2))))))
 
 
 
