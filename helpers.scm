@@ -19,10 +19,10 @@
 (define get-value-section-state cadr)
 (define get-variable-section-head car)
 (define get-variable-section-tail cdr)
-(define get-state-variable-head caar)
-(define get-state-variable-tail cdar)
-(define get-state-value-head caadr)
-(define get-state-value-tail cdadr)
+(define get-scope-variable-head caar)
+(define get-scope-variable-tail cdar)
+(define get-scope-value-head caadr)
+(define get-scope-value-tail cdadr)
 
 
 

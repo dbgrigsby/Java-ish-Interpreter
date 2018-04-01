@@ -76,7 +76,7 @@
        (G-remove-scope-from-state->state
         (evaluate-statement-list->state
          (rest-of-begin-statement arglist)
-         (G-add-scope-to-state->state state)
+         (G-add-empty-scope-to-state->state state)
          cfuncsinstance)))
 
       ((eq? 'break (get-upcoming-statement-name arglist))
@@ -160,7 +160,7 @@
                      (G-remove-scope-from-state->state
                       (evaluate-statement-list->state
                        (get-finally-from-try arglist)
-                       (G-add-scope-to-state->state s)
+                       (G-add-empty-scope-to-state->state s)
                        cfuncsinstance))))
         cfuncsinstance)))))
 
@@ -170,7 +170,7 @@
      (G-remove-scope-from-state->state
       (evaluate-statement-list->state
        (get-statements-from-try arglist)
-       (G-add-scope-to-state->state state)
+       (G-add-empty-scope-to-state->state state)
        (cfuncs-update-catch
         cfuncsinstance
         (lambda (s e)
@@ -181,7 +181,7 @@
              (G-push-state->state
               (get-exception-from-catch (get-catch-from-try arglist))
               e
-              (G-add-scope-to-state->state s))
+              (G-add-empty-scope-to-state->state s))
              cfuncsinstance))))))))))
 
 
@@ -559,7 +559,7 @@
 
 ; Adding/removing state section
 ; This section helps other sections affect the state with scoping rules
-(define G-add-scope-to-state->state
+(define G-add-empty-scope-to-state->state
   (lambda (state)
     (cons (get-top-scope initstate) state)))
 
@@ -626,13 +626,13 @@
 (define update-variable-in-scope
   (lambda (variable number state)
     (cond
-      ((eq? (get-state-variable-head state) variable)
+      ((eq? (get-scope-variable-head state) variable)
        (list (cons variable
-                   (get-state-variable-tail state))
+                   (get-scope-variable-tail state))
              (cons number
-                   (get-state-value-tail state))))
+                   (get-scope-value-tail state))))
       (else (append-head-scope-to-scope
-             (get-head-state state)
+             (get-head-scope state)
              (update-variable-in-scope variable number (get-tail-state state)))))))
 
 
@@ -642,9 +642,9 @@
 (define append-head-scope-to-scope
   (lambda (head-state tail-state)
     (list
-     (append (list (get-state-variable-head head-state))
+     (append (list (get-scope-variable-head head-state))
              (get-variable-section-state tail-state))
-     (append (list (get-state-value-head head-state))
+     (append (list (get-scope-value-head head-state))
              (get-value-section-state tail-state)))))
 
 ; looks up the value of a variable in the state
@@ -660,8 +660,8 @@
 (define lookup-variable-value-in-scope
   (lambda (variable state)
     (cond
-      ((eq? (get-state-variable-head state) variable)
-       (get-state-value-head state))
+      ((eq? (get-scope-variable-head state) variable)
+       (get-scope-value-head state))
       (else (lookup-variable-value-in-scope variable (get-tail-state state))))))
 
 ; this function takes values (integers, strings, variables, ...) and returns their type
@@ -685,16 +685,16 @@
 
 ; Important section helper functions for abstraction are defined below
 
-(define get-head-state
+(define get-head-scope
   (lambda (state)
     (list
-     (list (get-state-variable-head state))
-     (list (get-state-value-head state)))))
+     (list (get-scope-variable-head state))
+     (list (get-scope-value-head state)))))
 
 (define get-tail-state
   (lambda (state)
-    (list (get-state-variable-tail state)
-          (get-state-value-tail state))))
+    (list (get-scope-variable-tail state)
+          (get-scope-value-tail state))))
 
 ; crashes until (and including) the function is found in a given stack
 (define G-pop-scope-to-function->state
