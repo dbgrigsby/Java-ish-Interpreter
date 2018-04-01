@@ -26,7 +26,7 @@
        (cond
          ; not all programs/ segments must end in return
          ; empty list should return the state (ie: at the end of an if statement's statements)
-         ((null? program) '())
+         ((null? program) (error "No program"))
          ((not (list? program)) (error "Invalid program syntax"))
 
          (else (evaluate-statement-list->state program state
@@ -104,16 +104,16 @@
        (G-add-arguments-to-state->state
         (get-funcall-args (variable-value-lookup name state))
         (evaluate-actual-args args state)
-        (G-pop-scope-to-function->state name state))))
+        (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state)))))
      (evaluate-actual-args-for-state args
       (G-merge-states->state state
-       (get-state-from-pair
+        (get-state-from-pair
         (evaluate-parse-tree->retval_state
          (get-funcall-body (variable-value-lookup name state))
          (G-add-arguments-to-state->state
           (get-funcall-args (variable-value-lookup name state))
           (evaluate-actual-args args state)
-          (G-pop-scope-to-function->state name state)))))))))
+          (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state))))))))))
 
 (define evaluate-actual-args-for-state
   (lambda (actual state)
