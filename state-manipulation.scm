@@ -117,17 +117,23 @@
 (define G-eval-function->value_state 
   (lambda (name args state cfuncsinstance)
     (let* ([function-in-state (variable-value-lookup name state)]
+           [popped-state (G-add-empty-scope-to-state->state
+                          (G-push-stack-divider-to-state->state
+                           (G-pop-scope-to-function->state
+                            name
+                            (evaluate-actual-args-for-state args state cfuncsinstance))))]
            [evaluate-function-call
             (evaluate-parse-tree-with-cfuncs->retval_state
              (get-funcall-body function-in-state)
              (G-add-arguments-to-state->state
               (get-funcall-args function-in-state)
               (evaluate-actual-args args state cfuncsinstance)
-              (G-add-empty-scope-to-state->state
-               (G-push-stack-divider-to-state->state
-                (G-pop-scope-to-function->state
-                 name
-                 (evaluate-actual-args-for-state args state cfuncsinstance))))) (cfuncs-wipe-all-but-catch cfuncsinstance))])
+              popped-state)
+             (cfuncs-update-catch
+              (cfuncs-wipe-all-but-catch cfuncsinstance)
+              (lambda (s e) ((cfuncs-catch cfuncsinstance) (G-merge-states->state
+                           (evaluate-actual-args-for-state args state cfuncsinstance)
+                           (G-pop-to-stack-divider->state s)) e))))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
@@ -161,24 +167,25 @@
 ; Returns the value yielded from an if statement and the updated state
 (define G-evaluate-if-statement->state
   (lambda (arglist state cfuncsinstance)
-    (cond
-      ; If the if condition is true, evaluate the statements inside of it.
-      ((get-value-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))
+    (let* ([eval-ifcond (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance)])
+      (cond
+        ; If the if condition is true, evaluate the statements inside of it.
+        ((get-value-from-pair eval-ifcond)
 
-       ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
-       (evaluate-statement-list->state
-        (list (get-if-then arglist))
-        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))
-        cfuncsinstance))
+         ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
+         (evaluate-statement-list->state
+          (list (get-if-then arglist))
+          (get-state-from-pair eval-ifcond)
+          cfuncsinstance))
 
-      ((has-else? arglist)
-       (evaluate-statement-list->state
-        (list (get-if-else arglist))
-        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))
-        cfuncsinstance))
+        ((has-else? arglist)
+         (evaluate-statement-list->state
+          (list (get-if-else arglist))
+          (get-state-from-pair eval-ifcond)
+          cfuncsinstance))
 
-      ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-      (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))))))
+        ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
+        (else (get-state-from-pair eval-ifcond))))))
 
 (define get-if-else
   (lambda (arglist)
@@ -261,15 +268,16 @@
   (lambda (arglist state cfuncsinstance)
     (call/cc
      (lambda (endcontinue)
+       (let* ([eval-while-cond (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance)])
        (cond
          ; If the while condition is true, evaluate the statements inside of it.
-         ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance))
+         ((get-value-from-pair eval-while-cond)
           (evaluate-recursive-while
            arglist
            ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
            (evaluate-statement-list->state
             (list (get-while-statement arglist))
-            (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance))
+            (get-state-from-pair eval-while-cond)
 
             ; s is a passed in state
             (cfuncs-update-continue
@@ -279,7 +287,7 @@
            cfuncsinstance))
 
          ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-         (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance))))))))
+         (else (get-state-from-pair eval-while-cond))))))))
 
 
 

@@ -35,7 +35,10 @@
          identity)
       identity)))
 
-(define empty-cfuncs (cfuncs identity identity identity identity))
+(define identity-catch
+  (lambda (a b)
+    (error "called identity catch" a b)))
+(define empty-cfuncs (cfuncs identity identity identity identity-catch))
 
 
 
