@@ -119,28 +119,35 @@
              (G-add-arguments-to-state->state
               (get-funcall-args function-in-state)
               (evaluate-actual-args args state)
-              (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state (G-pop-scope-to-function->state name state)))))])
+              (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state (G-pop-scope-to-function->state name
+                                                                                                                       (evaluate-actual-args-for-state args state))))))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
-      state
+      (evaluate-actual-args-for-state args state)
       (G-pop-to-stack-divider->state
        (get-state-from-pair
         evaluate-function-call)))))))
+
+(define mevaluate-actual-args-for-state
+  (lambda (actual state)
+    state))
 
 (define evaluate-actual-args-for-state
   (lambda (actual state)
     (cond
       ((null? actual) state)
-      (else (evaluate-actual-args (cdr actual) (get-state-from-pair (G-value-lookup->value_state (car actual) state)))))))
+      (else (evaluate-actual-args-for-state (cdr actual) (get-state-from-pair (G-eval-atomic-statement->value_state (car actual) state)))))))
 
 (define evaluate-actual-args
   (lambda (actual state)
-    (cond
-      ((null? actual) actual)
-      (else (cons
-             (get-value-from-pair (G-value-lookup->value_state (car actual) state))
-             (evaluate-actual-args (cdr actual) state))))))
+      (cond
+        ((null? actual) actual)
+        (else
+         (let* ([value-lookup (G-value-lookup->value_state (car actual) state)])
+           (cons
+               (get-value-from-pair value-lookup)
+               (evaluate-actual-args (cdr actual) (get-state-from-pair value-lookup))))))))
 
 ; TODO add side effects
 
