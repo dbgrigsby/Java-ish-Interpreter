@@ -31,8 +31,8 @@
          ((null? program) (error "No program"))
          ((not (list? program)) (error "Invalid program syntax"))
 
-         (else (evaluate-statement-list->state program state
-                                               (cfuncs return identity identity identity))))))))
+         (else (list '() (evaluate-statement-list->state program state
+                                               (cfuncs return identity identity identity)))))))))
 
 ;(trace evaluate-parse-tree->retval_state)
 
@@ -99,6 +99,16 @@
 (define G-define-function->state 
   (lambda (arglist state cfuncsinstance)
     (G-push-state->state (get-function-name arglist) (list (get-function-formal-args arglist) (get-function-body arglist)) state)))
+
+
+(define declare-function
+  (lambda (function-name function-args function-body state)
+    (cond
+      ((G-declared-in-stack-frame? function-name state)
+       (error "variable already declared"))
+      (else (initialize-var->state function-name
+                                  (list function-args function-body)
+                                  state)))))
 
 (define G-eval-function->value_state 
   (lambda (name args state)
@@ -791,3 +801,5 @@
     (cond
       ((null? (get-variable-section-head (get-top-scope state))) #f)
       (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
+
+;(trace G-eval-function->value_state)
