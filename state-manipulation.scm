@@ -72,7 +72,7 @@
        (G-evaluate-try-statement->state arglist state cfuncsinstance))
 
       ((eq? 'throw (get-upcoming-statement-name arglist))
-       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (get-contents-of-throw arglist)))
+       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (get-value-from-pair (G-value-lookup->value_state (get-contents-of-throw arglist) state cfuncsinstance))))
 
       ((eq? 'while (get-upcoming-statement-name arglist))
        (G-evaluate-while-statement->state arglist state cfuncsinstance))
@@ -129,11 +129,14 @@
               (get-funcall-args function-in-state)
               (evaluate-actual-args args state cfuncsinstance)
               popped-state)
-             (cfuncs-update-catch
-              (cfuncs-wipe-all-but-catch cfuncsinstance)
-              (lambda (s e) ((cfuncs-catch cfuncsinstance) (G-merge-states->state
-                           (evaluate-actual-args-for-state args state cfuncsinstance)
-                           (G-pop-to-stack-divider->state s)) e))))])
+             (cfuncs-wipe-all-but-catch
+              (cfuncs-update-catch
+               cfuncsinstance
+               (lambda (s e) ((cfuncs-catch cfuncsinstance)
+                              (G-merge-states->state
+                               (evaluate-actual-args-for-state args state cfuncsinstance)
+                               (G-pop-to-stack-divider->state s))
+                               e)))))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
@@ -344,10 +347,10 @@
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
-      ((G-expr? arglist) (G-eval-expr->value_state arglist state))
+      ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
-      (else (error "not a valid atomic statement")))))
+      (else (error "not a valid atomic statement" arglist state)))))
 
 ; eval function atomic statement section
 (define is-funcall?
@@ -420,56 +423,56 @@
 ; expressions cover the scope of math expressions and boolean expressions (or conditional statements)
 ; Returns (value, updated-state)
 (define G-eval-expr->value_state
-  (lambda (arglist state)
+  (lambda (arglist state cfuncsinstance)
     (cond
       ((not (G-expr? arglist)) (error "given invalid expression operation"))
       ((eq? (length arglist) 2)
        (eval-expr-uni->value_state (get-op-from-expr arglist)
                                   (get-arg1-from-expr arglist)
-                                  state))
+                                  state cfuncsinstance))
       ((eq? (length arglist) 3)
        (eval-expr-multi->value_state (get-op-from-expr arglist)
                                     (get-arg1-from-expr arglist)
                                     (get-arg2-from-expr arglist)
-                                    state))
+                                    state cfuncsinstance))
       (else (error "invalid number of arguments")))))
 
 
 ; this function evaluates all 1 argument expressions
 ; it currently only evaluates ints and booleans
 (define eval-expr-uni->value_state
-  (lambda (op arg1 state)
+  (lambda (op arg1 state cfuncsinstance)
     (cond
-      ((math-expr? op) (eval-math-expr-uni->value_state op arg1 state))
-      ((boolean-expr? op) (eval-boolean-expr-uni->value_state op arg1 state))
+      ((math-expr? op) (eval-math-expr-uni->value_state op arg1 state cfuncsinstance))
+      ((boolean-expr? op) (eval-boolean-expr-uni->value_state op arg1 state cfuncsinstance))
       (else (error "unsupported expression")))))
 
 ; this function evaluates booleans
 ; this function is for 1 argument boolean expressions
 (define eval-boolean-expr-uni->value_state
-  (lambda (op arg1 state)
+  (lambda (op arg1 state cfuncsinstance)
     (cond
-      ((eq? (G-type-lookup arg1 state) 'boolean)
+      ((eq? (G-type-lookup arg1 state cfuncsinstance) 'boolean)
        (cons ((boolean-operator-to-function-uni op)
-              (get-value-from-pair (G-value-lookup->value_state arg1 state empty-cfuncs)))
-             (list (get-state-from-pair (G-value-lookup->value_state arg1 state empty-cfuncs)))))
+              (get-value-from-pair (G-value-lookup->value_state arg1 state cfuncsinstance)))
+             (list (get-state-from-pair (G-value-lookup->value_state arg1 state cfuncsinstance)))))
       (else (error "boolean operator not valid for non boolean types")))))
 
 ; this function evaluates math expressions
 ; it currently only supports integers
 ; this function is for 1 argument math expressions
 (define eval-math-expr-uni->value_state
-  (lambda (op arg1 state)
+  (lambda (op arg1 state cfuncsinstance)
     (cond
-      ((eq? (G-type-lookup arg1 state) 'integer)
-       (eval-math-expr-int-uni->value_state op arg1 state))
+      ((eq? (G-type-lookup arg1 state cfuncsinstance) 'integer)
+       (eval-math-expr-int-uni->value_state op arg1 state cfuncsinstance))
       (else (error "invalid type for math expression")))))
 
 ; this function evaluates math expressions of integers
 ; this function is for 1 argument math expressions
 (define eval-math-expr-int-uni->value_state
-  (lambda (op arg1 state)
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)])
+  (lambda (op arg1 state cfuncsinstance)
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state cfuncsinstance)])
     (cons ((math-operator-to-function-uni op #t)
            (get-value-from-pair lookup-arg1))
           (list (get-state-from-pair lookup-arg1))))))
@@ -477,22 +480,22 @@
 ; this function evaluates all 2 argument expressions
 ; it currently only evaluates ints and booleans
 (define eval-expr-multi->value_state
-  (lambda (op arg1 arg2 state)
+  (lambda (op arg1 arg2 state cfuncsinstance)
     (cond
-      ((compare-expr? op) (eval-compare-expr-multi->value_state op arg1 arg2 state))
-      ((math-expr? op) (eval-math-expr-multi->value_state op arg1 arg2 state))
-      ((boolean-expr? op) (eval-boolean-expr-multi->value_state op arg1 arg2 state))
+      ((compare-expr? op) (eval-compare-expr-multi->value_state op arg1 arg2 state cfuncsinstance))
+      ((math-expr? op) (eval-math-expr-multi->value_state op arg1 arg2 state cfuncsinstance))
+      ((boolean-expr? op) (eval-boolean-expr-multi->value_state op arg1 arg2 state cfuncsinstance))
       (else (error "unsupported expression")))))
 
 ; this function evaluates comparisons
 ; this function is for 2 argument comparison expressions
 (define eval-compare-expr-multi->value_state
-  (lambda (op arg1 arg2 state)
+  (lambda (op arg1 arg2 state cfuncsinstance)
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) empty-cfuncs)]) 
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state cfuncsinstance)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) cfuncsinstance)]) 
       (cons ((compare-operator-to-function-multi op) (get-value-from-pair lookup-arg1)
                                                      (get-value-from-pair lookup-arg2))
             (list (get-state-from-pair lookup-arg2))))))
@@ -501,14 +504,14 @@
 ; this function is for 2 argument boolean expressions
 ; Returns (value, updated->state)
 (define eval-boolean-expr-multi->value_state
-  (lambda (op arg1 arg2 state)
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) empty-cfuncs)])
+  (lambda (op arg1 arg2 state cfuncsinstance)
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs cfuncsinstance)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) cfuncsinstance)])
       (cond
         ; We return a (value, state), hence the cons for the value and the state
         ; The value is derived from applying the operator on arg1 and arg2
         ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-        ((and (eq? (G-type-lookup arg1 state) 'boolean) (eq? (G-type-lookup arg2 state) 'boolean))
+        ((and (eq? (G-type-lookup arg1 state cfuncsinstance) 'boolean) (eq? (G-type-lookup arg2 state cfuncsinstance) 'boolean))
          (cons ((boolean-operator-to-function-multi op)
                 (get-value-from-pair lookup-arg1)
                 (get-value-from-pair lookup-arg2))
@@ -520,22 +523,22 @@
 ; it currently only supports integers
 ; this function is for 2 argument math expressions
 (define eval-math-expr-multi->value_state
-  (lambda (op arg1 arg2 state)
+  (lambda (op arg1 arg2 state cfuncsinstance)
     (cond
-      ((and (eq? (G-type-lookup arg1 state) 'integer) (eq? (G-type-lookup arg2 state) 'integer))
-       (eval-math-expr-int-multi->value_state op arg1 arg2 state))
+      ((and (eq? (G-type-lookup arg1 state cfuncsinstance) 'integer) (eq? (G-type-lookup arg2 state cfuncsinstance) 'integer))
+       (eval-math-expr-int-multi->value_state op arg1 arg2 state cfuncsinstance))
       (else (error "invalid types for math expression")))))
 
 ; this function evaluates math expressions of integers
 ; this function is for 2 argument math expressions
 ; returns updated state
 (define eval-math-expr-int-multi->value_state
-  (lambda (op arg1 arg2 state)
+  (lambda (op arg1 arg2 state cfuncsinstance)
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) empty-cfuncs)])
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state cfuncsinstance)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) cfuncsinstance)])
       (cons ((math-operator-to-function-multi op #t)
              (get-value-from-pair lookup-arg1)
              (get-value-from-pair lookup-arg2))
@@ -561,7 +564,7 @@
       ((boolean? value) (cons value (list state)))
       ((java-boolean? value) (cons (lookup-java-boolean value) (list state)))
       ((G-initialized? value state) (cons (variable-value-lookup value state) (list state)))
-      (else (error "unsupported value lookup")))))
+      (else (error "unsupported value lookup" value "state" state)))))
 
 ; Determines whether a boolean in java boolean notation was encountered
 (define java-boolean?
@@ -658,7 +661,7 @@
       ((or (number? value) (null? value) (boolean? value) (list? value))
        (push-variable-as-literal->state variable value state))
       ; If the value is not a number, push the value of this variable to the state
-      (else (error "Value is a variable, expected to be value")))))
+      (else (error "Value is a variable, expected to be value" variable value state)))))
 
 ; Pushes a variable and a number to the state, or updates the state if the variable is there
 ; Returns the updated state
@@ -731,21 +734,21 @@
 ; this function takes values (integers, strings, variables, ...) and returns their type
 ; for now it only handles any atomic statement
 (define G-type-lookup
-  (lambda (value state)
+  (lambda (value state cfuncsinstance)
     (cond
       ((list? value)
-       (G-type-lookup (get-value-from-pair (G-value-lookup->value_state value state empty-cfuncs))
-                      state))
+       (G-type-lookup (get-value-from-pair (G-value-lookup->value_state value state cfuncsinstance))
+                      state cfuncsinstance))
       ((integer? value) 'integer)
       ((boolean? value) 'boolean)
       ((java-boolean? value) 'boolean)
-      ((G-initialized? value state) (variable-type-lookup value state))
-      (else (error "uninitialized variable or unsupported type")))))
+      ((G-initialized? value state) (variable-type-lookup value state cfuncsinstance))
+      (else (error "uninitialized variable or unsupported type" value state)))))
 
 ; looks up the type of a variable in the state
 (define variable-type-lookup
-  (lambda (variable state)
-    (G-type-lookup (variable-value-lookup variable state) state)))
+  (lambda (variable state cfuncsinstance)
+    (G-type-lookup (variable-value-lookup variable state) state cfuncsinstance)))
 
 ; Important section helper functions for abstraction are defined below
 
