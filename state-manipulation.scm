@@ -719,3 +719,20 @@
     (cond
       ((null? mod-state) orig-state)
       (else (cons (get-top-scope mod-state) (merge (get-tail-scope orig-state) (get-tail-scope mod-state)))))))
+
+; Add arguments to state
+(define G-add-arguments-to-state->state
+  (lambda (arg-namelist value-list state)
+    (cond
+      ((not (eq? (length arg-namelist) (length value-list))) (error "Arity mis-match between values and argument names"))
+      (else (cons (concatenate-scopes (list arg-namelist value-list) (car initstate)) state)))))
+
+(define concatenate-scopes
+  (lambda (head-state tail-state)
+    (list
+     (append (get-variable-section-state head-state)
+             (get-variable-section-state tail-state))
+     (append (get-value-section-state head-state)
+             (get-value-section-state tail-state)))))
+    
+  
