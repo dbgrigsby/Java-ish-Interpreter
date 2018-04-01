@@ -7,6 +7,8 @@
 (require "expression-ops.scm")
 (require "state-structs.scm")
 (require "helpers.scm")
+(require racket/base)
+(require racket/trace)
 
 
 
@@ -31,6 +33,9 @@
 
          (else (evaluate-statement-list->state program state
                                                (cfuncs return identity identity identity))))))))
+
+;(trace evaluate-parse-tree->retval_state)
+
 
 (define evaluate-statement-list->state
   (lambda (program state cfuncsinstance)
@@ -105,9 +110,10 @@
         (get-funcall-args (variable-value-lookup name state))
         (evaluate-actual-args args state)
         (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state)))))
-     (evaluate-actual-args-for-state args
-      (G-merge-states->state state
-        (get-state-from-pair
+     (G-merge-states->state
+      state
+      (G-remove-scope-from-state->state
+       (get-state-from-pair
         (evaluate-parse-tree->retval_state
          (get-funcall-body (variable-value-lookup name state))
          (G-add-arguments-to-state->state
@@ -127,7 +133,9 @@
       ((null? actual) actual)
       (else (cons
              (get-value-from-pair (G-value-lookup->value_state (car actual) state))
-             (evaluate-actual-args (cdr actual) (get-state-from-pair (G-value-lookup->value_state (car actual) state))))))))
+             (evaluate-actual-args (cdr actual) state))))))
+
+; TODO add side effects
 
 
 
