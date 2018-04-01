@@ -102,19 +102,19 @@
 
 (define G-eval-function->value_state 
   (lambda (name args state)
-    (let* ((function-in-state (variable-value-lookup name state))
-           (evaluate-function-call
+    (let* ([function-in-state (variable-value-lookup name state)]
+           [evaluate-function-call
             (evaluate-parse-tree->retval_state
              (get-funcall-body function-in-state)
              (G-add-arguments-to-state->state
               (get-funcall-args function-in-state)
               (evaluate-actual-args args state)
-              (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state))))))
+              (G-add-empty-scope-to-state->state (G-push-stack-divider->state (G-pop-scope-to-function->state name state)))))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
       state
-      (G-remove-scope-from-state->state
+      (G-pop-to-stack-divider
        (get-state-from-pair
         evaluate-function-call)))))))
 
