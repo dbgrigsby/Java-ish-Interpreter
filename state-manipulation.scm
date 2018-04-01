@@ -716,7 +716,7 @@
     (cond
       ((null? state) (error "function was not found in state"))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
-      (else (cons (get-top-scope state) (G-pop-scope-to-function->state (get-tail-scope state)))))))
+      (else (G-pop-scope-to-function->state fn (get-tail-scope state))))))
 
 ; merge two states, the updated one after the function and the old state
 ; the func state removes the top scope before returning to me, precondition.
