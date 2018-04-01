@@ -13,11 +13,11 @@
 (define interpret
   (lambda (filename)
     (with-handlers ([exn:fail? error->handler])
-      (output->formatter (evaluate-parse-tree->retval (append-main (parser filename)) initstate)))))
+      (output->formatter (get-value-from-pair (evaluate-parse-tree->retval_state (append-main (parser filename)) initstate))))))
 
 (define append-main
   (lambda program
-    (append program '((funcall main ())))))
+    (append program '(funcall main ()))))
 
 ; From (value state) ->> value
 ; If value is #t or #f, parses to correct string literal
