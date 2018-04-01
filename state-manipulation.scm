@@ -631,7 +631,7 @@
                    (get-state-variable-tail state))
              (cons number
                    (get-state-value-tail state))))
-      (else (append-state
+      (else (append-head-scope-to-scope
              (get-head-state state)
              (update-variable-in-scope variable number (get-tail-state state)))))))
 
@@ -639,7 +639,7 @@
 ; appends a head state to a tail state
 ; (e.g. ((a) (1)) appended to ((b c d) (2 3 4))
 ; yields ((a b c d) (1 2 3 4)))
-(define append-state
+(define append-head-scope-to-scope
   (lambda (head-state tail-state)
     (list
      (append (list (get-state-variable-head head-state))
