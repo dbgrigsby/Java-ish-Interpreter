@@ -465,14 +465,11 @@
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (cons ((compare-operator-to-function-multi op)
-           (get-value-from-pair (G-value-lookup->value_state arg1
-                                                            state))
-           (get-value-from-pair (G-value-lookup->value_state arg2
-                                                            (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
-          (list (get-state-from-pair (G-value-lookup->value_state arg2
-                                                            (get-state-from-pair (G-value-lookup->value_state arg1
-                                                                                                             state))))))))
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1))]) 
+      (cons ((compare-operator-to-function-multi op) (get-value-from-pair lookup-arg1)
+                                                     (get-value-from-pair lookup-arg2))
+            (list (get-state-from-pair lookup-arg2))))))
 
 ; this function evaluates booleans
 ; this function is for 2 argument boolean expressions
