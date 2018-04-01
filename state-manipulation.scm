@@ -98,14 +98,14 @@
 
 (define G-define-function->state 
   (lambda (arglist state cfuncsinstance)
-    (G-push-state->state (get-function-name arglist) (list (get-function-formal-args arglist) (get-function-body arglist)) state)))
+    (declare-function (get-function-name arglist) (get-function-formal-args arglist) (get-function-body arglist) state)))
 
 
 (define declare-function
   (lambda (function-name function-args function-body state)
     (cond
       ((G-declared-in-stack-frame? function-name state)
-       (error "variable already declared"))
+       (error "function already declared"))
       (else (initialize-var->state function-name
                                   (list function-args function-body)
                                   state)))))
@@ -298,7 +298,7 @@
 
 (define declare-var->state
   (lambda (name state)
-    (cons (append-head-scope-to-scope (list (list name) (list '())) (get-top-scope state)) (get-tail-scope state))))
+    (initialize-var->state name '())))
 
 ; Pushes the initializes the variable to the state
 (define initialize-var->state
@@ -802,4 +802,5 @@
       ((null? (get-variable-section-head (get-top-scope state))) #f)
       (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
 
-;(trace G-eval-function->value_state)
+;(trace G-merge-states->state)
+;(trace G-pop-to-stack-divider->state)
