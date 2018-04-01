@@ -23,6 +23,10 @@
 ; Main evaluation of parse tree function
 (define evaluate-parse-tree->retval_state
   (lambda (program state)
+    (evaluate-parse-tree-with-cfuncs->retval_state program state empty-cfuncs)))
+                                                   
+(define evaluate-parse-tree-with-cfuncs->retval_state
+  (lambda (program state cfuncsinstance)
     (call/cc
      (lambda (return)
        (cond
@@ -30,9 +34,8 @@
          ; empty list should return the state (ie: at the end of an if statement's statements)
          ((null? program) (error "No program"))
          ((not (list? program)) (error "Invalid program syntax"))
-
          (else (list '() (evaluate-statement-list->state program state
-                                               (cfuncs return identity identity identity)))))))))
+                                               (cfuncs-update-return cfuncsinstance return)))))))))
 
 ;(trace evaluate-parse-tree->retval_state)
 
@@ -57,13 +60,13 @@
 
       ((eq? 'return (get-upcoming-statement-name arglist))
        ((cfuncs-return cfuncsinstance)
-        (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state)))
+        (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state cfuncsinstance)))
 
       ((eq? 'continue (get-upcoming-statement-name arglist))
        ((cfuncs-continue cfuncsinstance) state))
 
       ((eq? 'var (get-upcoming-statement-name arglist))
-       (G-evaluate-var-declare-statement->state arglist state))
+       (G-evaluate-var-declare-statement->state arglist state cfuncsinstance))
 
       ((eq? 'try (get-upcoming-statement-name arglist))
        (G-evaluate-try-statement->state arglist state cfuncsinstance))
@@ -90,7 +93,7 @@
       ((eq? 'function (get-upcoming-statement-name arglist))
         (G-define-function->state (arglist-tail arglist) state cfuncsinstance))
 
-      (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
+      (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state cfuncsinstance))))))
 
 
 
@@ -110,40 +113,44 @@
                                   (list function-args function-body)
                                   state)))))
 
+
 (define G-eval-function->value_state 
-  (lambda (name args state)
+  (lambda (name args state cfuncsinstance)
     (let* ([function-in-state (variable-value-lookup name state)]
            [evaluate-function-call
-            (evaluate-parse-tree->retval_state
+            (evaluate-parse-tree-with-cfuncs->retval_state
              (get-funcall-body function-in-state)
              (G-add-arguments-to-state->state
               (get-funcall-args function-in-state)
-              (evaluate-actual-args args state)
-              (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state (G-pop-scope-to-function->state name
-                                                                                                                       (evaluate-actual-args-for-state args state))))))])
+              (evaluate-actual-args args state cfuncsinstance)
+              (G-add-empty-scope-to-state->state
+               (G-push-stack-divider-to-state->state
+                (G-pop-scope-to-function->state
+                 name
+                 (evaluate-actual-args-for-state args state cfuncsinstance))))) (cfuncs-wipe-all-but-catch cfuncsinstance))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
-      (evaluate-actual-args-for-state args state)
+      (evaluate-actual-args-for-state args state cfuncsinstance)
       (G-pop-to-stack-divider->state
        (get-state-from-pair
         evaluate-function-call)))))))
 
 (define evaluate-actual-args-for-state
-  (lambda (actual state)
+  (lambda (actual state cfuncsinstance)
     (cond
       ((null? actual) state)
-      (else (evaluate-actual-args-for-state (cdr actual) (get-state-from-pair (G-eval-atomic-statement->value_state (car actual) state)))))))
+      (else (evaluate-actual-args-for-state (cdr actual) (get-state-from-pair (G-eval-atomic-statement->value_state (car actual) state cfuncsinstance)) cfuncsinstance)))))
 
 (define evaluate-actual-args
-  (lambda (actual state)
+  (lambda (actual state cfuncsinstance)
       (cond
         ((null? actual) actual)
         (else
-         (let* ([value-lookup (G-value-lookup->value_state (car actual) state)])
+         (let* ([value-lookup (G-value-lookup->value_state (car actual) state cfuncsinstance)])
            (cons
                (get-value-from-pair value-lookup)
-               (evaluate-actual-args (cdr actual) (get-state-from-pair value-lookup))))))))
+               (evaluate-actual-args (cdr actual) (get-state-from-pair value-lookup) cfuncsinstance)))))))
 
 ; TODO add side effects
 
@@ -156,22 +163,22 @@
   (lambda (arglist state cfuncsinstance)
     (cond
       ; If the if condition is true, evaluate the statements inside of it.
-      ((get-value-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
+      ((get-value-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))
 
        ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
        (evaluate-statement-list->state
         (list (get-if-then arglist))
-        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
+        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))
         cfuncsinstance))
 
       ((has-else? arglist)
        (evaluate-statement-list->state
         (list (get-if-else arglist))
-        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))
+        (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))
         cfuncsinstance))
 
       ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-      (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state))))))
+      (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-if-cond arglist) state cfuncsinstance))))))
 
 (define get-if-else
   (lambda (arglist)
@@ -256,13 +263,13 @@
      (lambda (endcontinue)
        (cond
          ; If the while condition is true, evaluate the statements inside of it.
-         ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
+         ((get-value-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance))
           (evaluate-recursive-while
            arglist
            ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
            (evaluate-statement-list->state
             (list (get-while-statement arglist))
-            (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))
+            (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance))
 
             ; s is a passed in state
             (cfuncs-update-continue
@@ -272,7 +279,7 @@
            cfuncsinstance))
 
          ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
-         (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state))))))))
+         (else (get-state-from-pair (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance))))))))
 
 
 
@@ -285,14 +292,14 @@
 ; Variable declaration section
 ; Returns updated state after a declaration or initialization
 (define G-evaluate-var-declare-statement->state
-  (lambda (arglist state)
+  (lambda (arglist state cfuncsinstance)
     (cond
       ((null? (arglist-tail arglist)) (error "Nothing after the var"))
       ((G-declared-in-stack-frame? (get-var-name-from-declare-args arglist) state)
        (error "variable already declared"))
       ((only-declare? arglist) (declare-var->state (get-var-name-from-declare-args arglist) state))
       (else
-       (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state)])
+       (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state cfuncsinstance)])
        (initialize-var->state (get-var-name-from-declare-args arglist)
                                   (get-value-from-pair evaluate-assign)
                                   (get-state-from-pair evaluate-assign)))))))
@@ -325,13 +332,13 @@
 ; (e.g. (== 3 (= x (+ x 1)) is an atomic statement)
 ; Atomic statements can be put
 (define G-eval-atomic-statement->value_state
-  (lambda (arglist state)
+  (lambda (arglist state cfuncsinstance)
     (cond
-      ((single-atom? arglist) (G-value-lookup->value_state arglist state))
-      ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state))
+      ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
+      ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state))
-      ((G-assign? arglist) (G-eval-assign->value_state arglist state))
-      ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state))
+      ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
+      ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
       (else (error "not a valid atomic statement")))))
 
 ; eval function atomic statement section
@@ -340,8 +347,8 @@
     (eq? (arglist-head arglist) 'funcall)))
 
 (define eval-funcall->value_state
-  (lambda (arglist state)
-    (G-eval-function->value_state (get-function-name arglist) (get-function-actual-args arglist) state)))
+  (lambda (arglist state cfuncsinstance)
+    (G-eval-function->value_state (get-function-name arglist) (get-function-actual-args arglist) state cfuncsinstance)))
 
 
 (define single-atom?
@@ -374,15 +381,15 @@
 ; will returns value state pair
 ; (e.g. (= x 1) will return (1 (updated-state)))
 (define G-eval-assign->value_state
-  (lambda (arglist state)
-    (let* ([evaluate-assign (G-eval-atomic-statement->value_state (get-arg2-from-expr arglist) state)])
+  (lambda (arglist state cfuncsinstance)
+    (let* ([evaluate-assign (G-eval-atomic-statement->value_state (get-arg2-from-expr arglist) state cfuncsinstance)])
     (cond
       ((not (G-assign? arglist)) (error "not an assignment"))
       ((G-declared? (get-arg1-from-expr arglist) state)
        (G-value-lookup->value_state (get-arg1-from-expr arglist)
                                    (G-push-state->state (get-arg1-from-expr arglist)
                                                        (get-value-from-pair evaluate-assign)
-                                                       (get-state-from-pair evaluate-assign))))
+                                                       (get-state-from-pair evaluate-assign)) cfuncsinstance))
       (else (error "variable undeclared"))))))
 
 (define G-assign?
@@ -436,8 +443,8 @@
     (cond
       ((eq? (G-type-lookup arg1 state) 'boolean)
        (cons ((boolean-operator-to-function-uni op)
-              (get-value-from-pair (G-value-lookup->value_state arg1 state)))
-             (list (get-state-from-pair (G-value-lookup->value_state arg1 state)))))
+              (get-value-from-pair (G-value-lookup->value_state arg1 state empty-cfuncs)))
+             (list (get-state-from-pair (G-value-lookup->value_state arg1 state empty-cfuncs)))))
       (else (error "boolean operator not valid for non boolean types")))))
 
 ; this function evaluates math expressions
@@ -454,7 +461,7 @@
 ; this function is for 1 argument math expressions
 (define eval-math-expr-int-uni->value_state
   (lambda (op arg1 state)
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)])
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)])
     (cons ((math-operator-to-function-uni op #t)
            (get-value-from-pair lookup-arg1))
           (list (get-state-from-pair lookup-arg1))))))
@@ -476,8 +483,8 @@
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1))]) 
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) empty-cfuncs)]) 
       (cons ((compare-operator-to-function-multi op) (get-value-from-pair lookup-arg1)
                                                      (get-value-from-pair lookup-arg2))
             (list (get-state-from-pair lookup-arg2))))))
@@ -487,8 +494,8 @@
 ; Returns (value, updated->state)
 (define eval-boolean-expr-multi->value_state
   (lambda (op arg1 arg2 state)
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1))])
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) empty-cfuncs)])
       (cond
         ; We return a (value, state), hence the cons for the value and the state
         ; The value is derived from applying the operator on arg1 and arg2
@@ -519,8 +526,8 @@
     ; We return a (value, state), hence the cons for the value and the state
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1))])
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs)]
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) empty-cfuncs)])
       (cons ((math-operator-to-function-multi op #t)
              (get-value-from-pair lookup-arg1)
              (get-value-from-pair lookup-arg2))
@@ -538,10 +545,10 @@
 ; this function takes values (integers, strings, variables, expressions, ...) and returns their actual value
 ; for now it only handles int and bolean literals and expressions of the two
 (define G-value-lookup->value_state
-  (lambda (value state)
+  (lambda (value state cfuncsinstance)
     (cond
       ; if its an expression, evaluate to get value
-      ((list? value) (G-eval-atomic-statement->value_state value state))
+      ((list? value) (G-eval-atomic-statement->value_state value state cfuncsinstance))
       ((integer? value) (cons value (list state)))
       ((boolean? value) (cons value (list state)))
       ((java-boolean? value) (cons (lookup-java-boolean value) (list state)))
@@ -719,7 +726,7 @@
   (lambda (value state)
     (cond
       ((list? value)
-       (G-type-lookup (get-value-from-pair (G-value-lookup->value_state value state))
+       (G-type-lookup (get-value-from-pair (G-value-lookup->value_state value state empty-cfuncs))
                       state))
       ((integer? value) 'integer)
       ((boolean? value) 'boolean)
