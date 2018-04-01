@@ -16,8 +16,8 @@
       (output->formatter (get-value-from-pair (evaluate-parse-tree->retval_state (append-main (parser filename)) initstate))))))
 
 (define append-main
-  (lambda program
-    (append program '(funcall main))))
+  (lambda (program)
+    (append program '((funcall main)))))
 
 ; From (value state) ->> value
 ; If value is #t or #f, parses to correct string literal
