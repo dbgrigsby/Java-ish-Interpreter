@@ -96,25 +96,39 @@
     (G-push-state->state (get-function-name arglist) (list (get-function-formal-args arglist) (get-function-body arglist)) state)))
 
 (define G-eval-function->value_state 
-  (lambda (name args state) (list 1 state))) ; debug call
+  (lambda (name args state)
+    (cons
+     (get-value-from-pair
+      (evaluate-parse-tree->retval_state
+       (get-funcall-body (variable-value-lookup name state))
+       (G-add-arguments-to-state->state
+        (get-funcall-args (variable-value-lookup name state))
+        (evaluate-actual-args args)
+        (G-pop-scope-to-function->state name state))))
+     (evaluate-actual-args-for-state args
+      (G-merge-states->state state
+       (get-state-from-pair
+        (evaluate-parse-tree->retval_state
+         (get-funcall-body (variable-value-lookup name state))
+         (G-add-arguments-to-state->state
+          (get-funcall-args (variable-value-lookup name state))
+          (evaluate-actual-args args)
+          (G-pop-scope-to-function->state name state)))))))))
 
+(define evaluate-actual-args-for-state
+  (lambda (actual state)
+    (cond
+      ((null? actual) state)
+      (else (evaluate-actual-args (cdr actual) (get-state-from-pair (G-value-lookup->value_state (car actual) state)))))))
 
-(define function-descriptor caar)
-(define function-name cadar)
-(define function-params caddar)
-(define function-body (lambda (arglist) (car (cdddar arglist))))
+(define evaluate-actual-args
+  (lambda (actual state)
+    (cond
+      ((null? actual) actual)
+      (else (cons
+             (get-value-from-pair (G-value-lookup->value_state (car actual) state))
+             (evaluate-actual-args (cdr actual) (get-state-from-pair (G-value-lookup->value_state (car actual) state))))))))
 
-(define extract-main-method->method-body
-  (lambda (arglist)
-    (cond 
-      ((null? arglist) (error "no main method found"))
-      ((is-main-method? (function-descriptor arglist) (function-name arglist) (function-params arglist))
-        (function-body arglist))
-      (else (error "no main method found")))))
-
-(define is-main-method?
-  (lambda (stmt1 stmt2 stmt3)
-    ((and (eq? stmt1 'function) (eq? stmt2 'main) (eq? stmt3 `())))))
 
 
 ; if statement section
@@ -716,7 +730,7 @@
     (cond
       ((null? state) (error "function was not found in state"))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
-      (else (cons (get-top-scope state) (G-pop-scope-to-function->state (get-tail-scope state)))))))
+      (else (cons (get-top-scope state) (G-pop-scope-to-function->state fn (get-tail-scope state)))))))
 
 ; merge two states, the updated one after the function and the old state
 ; the func state removes the top scope before returning to me, precondition.
@@ -738,8 +752,10 @@
 (define G-add-arguments-to-state->state
   (lambda (arg-namelist value-list state)
     (cond
+      ((null? arg-namelist) state)
       ((not (eq? (length arg-namelist) (length value-list))) (error "Arity mis-match between values and argument names"))
       (else (cons (concatenate-scopes (list arg-namelist value-list) (car initstate)) state)))))
+
 
 (define concatenate-scopes
   (lambda (head-state tail-state)
