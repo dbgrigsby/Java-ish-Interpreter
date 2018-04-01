@@ -19,7 +19,7 @@
 ; Interpretation loop section
 
 ; Main evaluation of parse tree function
-(define evaluate-parse-tree->retval
+(define evaluate-parse-tree->retval_state
   (lambda (program state)
     (call/cc
      (lambda (return)
@@ -52,7 +52,7 @@
 
       ((eq? 'return (get-upcoming-statement-name arglist))
        ((cfuncs-return cfuncsinstance)
-        (get-value-from-pair (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state))))
+        (G-eval-atomic-statement->value_state (rest-of-return-statement arglist) state)))
 
       ((eq? 'continue (get-upcoming-statement-name arglist))
        ((cfuncs-continue cfuncsinstance) state))
@@ -83,7 +83,7 @@
        ((cfuncs-break cfuncsinstance) (G-remove-scope-from-state->state state)))
 
       ((eq? 'function (get-upcoming-statement-name arglist))
-        (G-define-function->state arglist state cfuncsinstance))
+        (G-define-function->state (arglist-tail arglist) state cfuncsinstance))
 
       (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state))))))
 
@@ -93,7 +93,11 @@
 
 (define G-define-function->state 
   (lambda (arglist state cfuncsinstance)
-    `(()()))) ; Function header, no implementation
+    (G-push-state->state (get-function-name arglist) (list (get-function-formal-args arglist) (get-function-body arglist)) state)))
+
+(define G-eval-function->value_state 
+  (lambda (name args state) (list 1 state))) ; debug call
+
 
 (define function-descriptor caar)
 (define function-name cadar)
@@ -296,7 +300,17 @@
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state))
+      ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state))
       (else (error "not a valid atomic statement")))))
+
+; eval function atomic statement section
+(define is-funcall?
+  (lambda (arglist)
+    (eq? (arglist-head arglist) 'funcall)))
+
+(define eval-funcall->value_state
+  (lambda (arglist state)
+    (G-eval-function->value_state (get-function-name arglist) (get-function-actual-args arglist) state)))
 
 
 (define single-atom?
