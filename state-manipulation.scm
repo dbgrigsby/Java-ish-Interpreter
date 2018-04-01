@@ -117,17 +117,23 @@
 (define G-eval-function->value_state 
   (lambda (name args state cfuncsinstance)
     (let* ([function-in-state (variable-value-lookup name state)]
+           [popped-state (G-add-empty-scope-to-state->state
+                          (G-push-stack-divider-to-state->state
+                           (G-pop-scope-to-function->state
+                            name
+                            (evaluate-actual-args-for-state args state cfuncsinstance))))]
            [evaluate-function-call
             (evaluate-parse-tree-with-cfuncs->retval_state
              (get-funcall-body function-in-state)
              (G-add-arguments-to-state->state
               (get-funcall-args function-in-state)
               (evaluate-actual-args args state cfuncsinstance)
-              (G-add-empty-scope-to-state->state
-               (G-push-stack-divider-to-state->state
-                (G-pop-scope-to-function->state
-                 name
-                 (evaluate-actual-args-for-state args state cfuncsinstance))))) (cfuncs-wipe-all-but-catch cfuncsinstance))])
+              popped-state)
+             (cfuncs-update-catch
+              (cfuncs-wipe-all-but-catch cfuncsinstance)
+              (lambda (s e) ((cfuncs-catch cfuncsinstance) (G-merge-states->state
+                           (evaluate-actual-args-for-state args state cfuncsinstance)
+                           (G-pop-to-stack-divider->state s)) e))))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
