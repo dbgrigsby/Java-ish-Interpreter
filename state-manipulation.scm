@@ -102,19 +102,19 @@
 
 (define G-eval-function->value_state 
   (lambda (name args state)
-    (let* ((function-in-state (variable-value-lookup name state))
-           (evaluate-function-call
+    (let* ([function-in-state (variable-value-lookup name state)]
+           [evaluate-function-call
             (evaluate-parse-tree->retval_state
              (get-funcall-body function-in-state)
              (G-add-arguments-to-state->state
               (get-funcall-args function-in-state)
               (evaluate-actual-args args state)
-              (G-add-empty-scope-to-state->state (G-pop-scope-to-function->state name state))))))
+              (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state (G-pop-scope-to-function->state name state)))))])
     (list
      (get-value-from-pair evaluate-function-call)
      (G-merge-states->state
       state
-      (G-remove-scope-from-state->state
+      (G-pop-to-stack-divider->state
        (get-state-from-pair
         evaluate-function-call)))))))
 
@@ -273,27 +273,27 @@
 ; Returns updated state after a declaration or initialization
 (define G-evaluate-var-declare-statement->state
   (lambda (arglist state)
+    (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state)])
     (cond
       ((null? (arglist-tail arglist)) (error "Nothing after the var"))
-      ((G-declared? (get-var-name-from-declare-args arglist) state)
+      ((G-declared-in-stack-frame? (get-var-name-from-declare-args arglist) state)
        (error "variable already declared"))
       ((only-declare? arglist)
        (declare-var->state (get-var-name-from-declare-args arglist)
                           state))
       (else (initialize-var->state (get-var-name-from-declare-args arglist)
-                                  (get-value-from-pair (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist)
-                                                                                            state))
-                                  (get-state-from-pair (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist)
-                                                                                            state)))))))
+                                  (get-value-from-pair evaluate-assign)
+                                  (get-state-from-pair evaluate-assign)))))))
+
 
 (define declare-var->state
   (lambda (name state)
-    (G-push-state->state name `() state)))
+    (cons (append-head-scope-to-scope (list (list name) (list '())) (get-top-scope state)) (get-tail-scope state))))
 
 ; Pushes the initializes the variable to the state
 (define initialize-var->state
   (lambda (name value state)
-    (G-push-state->state name value state)))
+    (cons (append-head-scope-to-scope (list (list name) (list value)) (get-top-scope state)) (get-tail-scope state))))
 
 (define only-declare?
   (lambda (arglist)
@@ -363,16 +363,15 @@
 ; (e.g. (= x 1) will return (1 (updated-state)))
 (define G-eval-assign->value_state
   (lambda (arglist state)
+    (let* ([evaluate-assign (G-eval-atomic-statement->value_state (get-arg2-from-expr arglist) state)])
     (cond
       ((not (G-assign? arglist)) (error "not an assignment"))
       ((G-declared? (get-arg1-from-expr arglist) state)
        (G-value-lookup->value_state (get-arg1-from-expr arglist)
                                    (G-push-state->state (get-arg1-from-expr arglist)
-                                                       (get-value-from-pair (G-eval-atomic-statement->value_state (get-arg2-from-expr arglist)
-                                                                                                                 state))
-                                                       (get-state-from-pair (G-eval-atomic-statement->value_state(get-arg2-from-expr arglist)
-                                                                                                                state)))))
-      (else (error "variable undeclared")))))
+                                                       (get-value-from-pair evaluate-assign)
+                                                       (get-state-from-pair evaluate-assign))))
+      (else (error "variable undeclared"))))))
 
 (define G-assign?
   (lambda (arglist)
@@ -563,6 +562,13 @@
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) variable-name) #t)
       (else (G-declared? variable-name (get-tail-scope state))))))
 
+(define G-declared-in-stack-frame?
+  (lambda (variable-name state)
+    (cond
+      ((state-empty? state) #f)
+      ((is-top-scope-stack-divider? state) #f)
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) variable-name) #t)
+      (else (G-declared-in-stack-frame? variable-name (get-tail-scope state))))))
 
 ; tests whether a variable is declared in a given scope, which is a state in the list of states we have.
 (define declared-in-scope?
@@ -777,5 +783,11 @@
   (lambda (state)
     (cond
       ((null? state) (error "No stack divider found"))
-      ((eq? (get-scope-variable-head (get-top-scope state)) '.sf) (get-tail-scope state))
+      ((is-top-scope-stack-divider? state) (get-tail-scope state))
       (else (G-pop-to-stack-divider->state (get-tail-scope state))))))
+
+(define is-top-scope-stack-divider?
+  (lambda (state)
+    (cond
+      ((null? (get-variable-section-head (get-top-scope state))) #f)
+      (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
