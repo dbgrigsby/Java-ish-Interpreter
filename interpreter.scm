@@ -29,7 +29,7 @@
       (else toFormat))))
 
 ; Error handler, returns `error if error bubbles up
-; All errors, despite their text, return 'error for test purposes
+; All errors, despite their text, return 'error for test purposes 
 (define error->handler
   (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error->handler] relies on this format.
     'error))
