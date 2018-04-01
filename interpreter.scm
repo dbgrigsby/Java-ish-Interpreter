@@ -17,7 +17,7 @@
 
 (define append-main
   (lambda (program)
-    (append program '((funcall main)))))
+    (append program '((return (funcall main))))))
 
 ; From (value state) ->> value
 ; If value is #t or #f, parses to correct string literal
