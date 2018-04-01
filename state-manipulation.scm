@@ -97,7 +97,7 @@
 
 (define G-eval-function->value_state 
   (lambda (name args state)
-    (cons
+    (list
      (get-value-from-pair
       (evaluate-parse-tree->retval_state
        (get-funcall-body (variable-value-lookup name state))
