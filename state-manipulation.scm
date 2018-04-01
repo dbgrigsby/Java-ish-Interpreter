@@ -129,10 +129,6 @@
        (get-state-from-pair
         evaluate-function-call)))))))
 
-(define mevaluate-actual-args-for-state
-  (lambda (actual state)
-    state))
-
 (define evaluate-actual-args-for-state
   (lambda (actual state)
     (cond
