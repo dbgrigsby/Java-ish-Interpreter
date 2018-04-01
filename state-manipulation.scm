@@ -283,22 +283,21 @@
 ; Returns updated state after a declaration or initialization
 (define G-evaluate-var-declare-statement->state
   (lambda (arglist state)
-    (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state)])
     (cond
       ((null? (arglist-tail arglist)) (error "Nothing after the var"))
       ((G-declared-in-stack-frame? (get-var-name-from-declare-args arglist) state)
        (error "variable already declared"))
-      ((only-declare? arglist)
-       (declare-var->state (get-var-name-from-declare-args arglist)
-                          state))
-      (else (initialize-var->state (get-var-name-from-declare-args arglist)
+      ((only-declare? arglist) (declare-var->state (get-var-name-from-declare-args arglist) state))
+      (else
+       (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state)])
+       (initialize-var->state (get-var-name-from-declare-args arglist)
                                   (get-value-from-pair evaluate-assign)
                                   (get-state-from-pair evaluate-assign)))))))
 
 
 (define declare-var->state
   (lambda (name state)
-    (initialize-var->state name '())))
+    (initialize-var->state name '() state)))
 
 ; Pushes the initializes the variable to the state
 (define initialize-var->state
@@ -803,4 +802,4 @@
       (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
 
 ;(trace G-merge-states->state)
-;(trace G-pop-to-stack-divider->state)
+;(trace G-evaluate-var-declare-statement->state)
