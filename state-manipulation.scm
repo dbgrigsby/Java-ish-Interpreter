@@ -768,4 +768,14 @@
      (append (get-value-section-state head-state)
              (get-value-section-state tail-state)))))
     
-  
+
+(define G-push-stack-divider-to-state->state
+  (lambda (state)
+    (cons '((.sf) (0)) state)))
+    
+(define G-pop-to-stack-divider->state
+  (lambda (state)
+    (cond
+      ((null? state) (error "No stack divider found"))
+      ((eq? (get-scope-variable-head (get-top-scope state)) '.sf) (get-tail-scope state))
+      (else (G-pop-to-stack-divider->state (get-tail-scope state))))))
