@@ -103,7 +103,7 @@
        (get-funcall-body (variable-value-lookup name state))
        (G-add-arguments-to-state->state
         (get-funcall-args (variable-value-lookup name state))
-        (evaluate-actual-args args)
+        (evaluate-actual-args args state)
         (G-pop-scope-to-function->state name state))))
      (evaluate-actual-args-for-state args
       (G-merge-states->state state
@@ -112,7 +112,7 @@
          (get-funcall-body (variable-value-lookup name state))
          (G-add-arguments-to-state->state
           (get-funcall-args (variable-value-lookup name state))
-          (evaluate-actual-args args)
+          (evaluate-actual-args args state)
           (G-pop-scope-to-function->state name state)))))))))
 
 (define evaluate-actual-args-for-state
@@ -730,7 +730,7 @@
     (cond
       ((null? state) (error "function was not found in state"))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
-      (else (cons (get-top-scope state) (G-pop-scope-to-function->state fn (get-tail-scope state)))))))
+      (else (G-pop-scope-to-function->state fn (get-tail-scope state))))))
 
 ; merge two states, the updated one after the function and the old state
 ; the func state removes the top scope before returning to me, precondition.
