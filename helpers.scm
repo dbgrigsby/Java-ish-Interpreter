@@ -89,6 +89,9 @@
 
 ;functions section
 (define get-function-name car)
-(define get-function-actual-args cadr)
+(define get-function-actual-args cdr)
 (define get-function-formal-args cadr)
 (define get-function-body caddr)
+
+(define get-funcall-args car)
+(define get-funcall-body cadr)
