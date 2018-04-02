@@ -5,19 +5,18 @@ function divide(x, y) {
 }
 
 function main() {
-  var y = 0;
-  if(true) {
-	  var x = 100;
-	  while (x >= 0) {
-		  x = x - 1;
-		  try {
-		  	divide(10,0);
-		  }
-		  catch (e2) {
-		  	y = y + e2;
-		  }
-	  }
+  var x = 0;
+  try {
+   if(true){
+   var y = 15;
+     if(true){
+       if(true){if(true)if(true)if(true)if(true)throw 10;}
+     }
+   }
   }
-  var x = 10;
-  return x + y;
+  catch (e){}
+  finally{
+    x = x + 1;
+  }
+  return x;
 }
