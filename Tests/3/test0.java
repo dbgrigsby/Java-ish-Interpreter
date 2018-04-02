@@ -4,27 +4,20 @@ function divide(x, y) {
   return x / y;
 }
 
- function main() {
-  var x = 0;
-  var j = 1;
-
-  try {
-    while (j >= 0) {
-    var i = 100;
-    while (i >= 0) {
-      try {
-        x = x + divide(10*i, i);
-      }
-      catch(e) {
-        x = x + divide(e, j);
-      }
-      i = i - 1;
-    }
-    j = j - 1;
-   }
+function main() {
+  var y = 0;
+  if(true) {
+	  var x = 100;
+	  while (x >= 0) {
+		  x = x - 1;
+		  try {
+		  	divide(10,0);
+		  }
+		  catch (e2) {
+		  	y = y + e2;
+		  }
+	  }
   }
-  catch (e2) {
-    x = x * 2;
-  }
-  return x;
+  var x = 10;
+  return x + y;
 }

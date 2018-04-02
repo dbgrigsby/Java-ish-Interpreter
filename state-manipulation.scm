@@ -134,7 +134,7 @@
                cfuncsinstance
                (lambda (s e) ((cfuncs-catch cfuncsinstance)
                               (G-merge-states->state
-                               (evaluate-actual-args-for-state args state cfuncsinstance)
+                               (G-remove-scope-from-state->state (evaluate-actual-args-for-state args state cfuncsinstance))
                                (G-pop-to-stack-divider->state s))
                                e)))))])
     (list

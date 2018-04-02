@@ -98,7 +98,7 @@
 (test "Tests/3/test17.java" `error) ; Error: b out of scope
 (test "Tests/3/test18.java" 125)
 (test "Tests/3/test19.java" 100)
-(test "Tests/2/test20.java" 2000400)
-(test "Tests/2/test21.java" 3421)
-(test "Tests/2/test22.java" 20322)
-(test "Tests/2/test23.java" 21)
+(test "Tests/3/test20.java" 2000400)
+(test "Tests/3/test21.java" 3421)
+(test "Tests/3/test22.java" 20322)
+(test "Tests/3/test23.java" 21)
