@@ -72,7 +72,7 @@
        (G-evaluate-try-statement->state arglist state cfuncsinstance))
 
       ((eq? 'throw (get-upcoming-statement-name arglist))
-       ((cfuncs-catch cfuncsinstance) (G-remove-scope-from-state->state state) (get-value-from-pair (G-value-lookup->value_state (get-contents-of-throw arglist) state cfuncsinstance))))
+       ((cfuncs-catch cfuncsinstance) state (get-value-from-pair (G-value-lookup->value_state (get-contents-of-throw arglist) state cfuncsinstance))))
 
       ((eq? 'while (get-upcoming-statement-name arglist))
        (G-evaluate-while-statement->state arglist state cfuncsinstance))
@@ -134,7 +134,7 @@
                cfuncsinstance
                (lambda (s e) ((cfuncs-catch cfuncsinstance)
                               (G-merge-states->state
-                               (G-remove-scope-from-state->state (evaluate-actual-args-for-state args state cfuncsinstance))
+                               (evaluate-actual-args-for-state args state cfuncsinstance)
                                (G-pop-to-stack-divider->state s))
                                e)))))])
     (list
@@ -234,7 +234,7 @@
              (G-push-state->state
               (get-exception-from-catch (get-catch-from-try arglist))
               e
-              (G-add-empty-scope-to-state->state s))
+              (G-add-empty-scope-to-state->state (G-remove-scope-from-state->state s)))
              cfuncsinstance))))))))))
 
 
