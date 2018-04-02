@@ -307,7 +307,7 @@
     (cond
       ((null? (arglist-tail arglist)) (error "Nothing after the var"))
       ((G-declared-in-stack-frame? (get-var-name-from-declare-args arglist) state)
-       (error "variable already declared"))
+       (error "variable already declared" (get-var-name-from-declare-args arglist) state))
       ((only-declare? arglist) (declare-var->state (get-var-name-from-declare-args arglist) state))
       (else
        (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state cfuncsinstance)])
