@@ -505,7 +505,7 @@
 ; Returns (value, updated->state)
 (define eval-boolean-expr-multi->value_state
   (lambda (op arg1 arg2 state cfuncsinstance)
-    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state empty-cfuncs cfuncsinstance)]
+    (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state cfuncsinstance)]
            [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) cfuncsinstance)])
       (cond
         ; We return a (value, state), hence the cons for the value and the state
