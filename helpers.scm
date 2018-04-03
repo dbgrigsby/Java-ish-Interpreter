@@ -26,6 +26,7 @@
 
 
 
+
 ; Structure of the program arguments section
 ; Gets the first argument of the list of arguments
 (define program-head car)
