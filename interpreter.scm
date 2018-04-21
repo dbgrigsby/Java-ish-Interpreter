@@ -2,7 +2,7 @@
 ; Adam Beck
 ; Daniel Grigsby
 #lang racket
-(require "functionParser.scm")
+(require "classParser.scm")
 ;(require "expression-ops.scm")
 (require "state-manipulation.scm")
 (require "helpers.scm")

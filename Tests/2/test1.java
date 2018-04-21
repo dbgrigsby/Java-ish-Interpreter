@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 10;
 {
@@ -6,4 +8,6 @@ var x = 10;
   x = z;
 }
 return x;
+}
+
 }

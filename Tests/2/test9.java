@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 0;
 while (x < 10) {
@@ -6,4 +8,6 @@ while (x < 10) {
   x = x + 100;
 }
 return x;
+}
+
 }

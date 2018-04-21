@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 100 % 2 == 0;
 var y = 10 >= 20;
@@ -7,4 +9,6 @@ if (x || y)
 else
   z = x;
 return z;
+}
+
 }

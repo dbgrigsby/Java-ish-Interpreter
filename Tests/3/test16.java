@@ -1,3 +1,5 @@
+class A {
+
 function main() {
   var result;
   var base;
@@ -26,3 +28,5 @@ function main() {
   return result;
 }
 
+
+}

@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x;
 var y;
@@ -6,4 +8,6 @@ if ((x = x + 1) > y)
   return x;
 else
   return y;
+}
+
 }

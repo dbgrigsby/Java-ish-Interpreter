@@ -1,6 +1,6 @@
 #lang racket
 (require "interpreter.scm")
-
+;(require (planet jowalsh/code-coverage))
 
 ; Tester
 

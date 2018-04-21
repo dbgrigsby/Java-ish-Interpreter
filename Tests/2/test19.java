@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 10;
 var result = 1;
@@ -15,4 +17,6 @@ catch (ex) {
   throw 1;
 }
 return result;
+}
+
 }

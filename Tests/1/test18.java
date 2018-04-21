@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 10;
 var y = 20;
@@ -7,4 +9,6 @@ if (!z || false)
 else
   z = z;
 return z;
+}
+
 }

@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var a = 31160;
 var b = 1476;
@@ -13,4 +15,6 @@ while (r != 0) {
   r = a % b;
 }
 return b;
+}
+
 }

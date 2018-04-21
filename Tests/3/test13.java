@@ -1,3 +1,5 @@
+class A {
+
 function main() {
   function h() {
     return 10;
@@ -8,4 +10,5 @@ function main() {
   }
 
   return g() - h();
+}
 }

@@ -1,3 +1,5 @@
+class A {
+
 function divide(x, y) {
   if (y == 0)
     throw 1000000;
@@ -19,4 +21,6 @@ function main() {
     x = x + 1;
   }
   return x;
+}
+
 }

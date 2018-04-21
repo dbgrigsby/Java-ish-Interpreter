@@ -1,3 +1,5 @@
+class A {
+
 function f(x) {
   function g(x) {
     var b;
@@ -15,4 +17,5 @@ function f(x) {
 
 function main() {
   return f(10);
+}
 }

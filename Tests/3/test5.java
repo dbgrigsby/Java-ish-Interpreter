@@ -1,3 +1,5 @@
+class A {
+
 function min(x, y, z) {
   if (x < y) {
     if (x < z)
@@ -26,4 +28,6 @@ function main() {
       if (min2 == min3)
         return 1;
   return 0;
+}
+
 }

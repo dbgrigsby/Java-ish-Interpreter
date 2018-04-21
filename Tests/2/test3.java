@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 0;
 var y = 10;
@@ -6,4 +8,6 @@ while (!(x >= y) || !(y > 25)) {
   y = y + 1;
 }
 return x;
+}
+
 }
