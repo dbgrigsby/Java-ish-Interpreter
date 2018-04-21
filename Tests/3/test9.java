@@ -1,3 +1,5 @@
+class A {
+
 function fact(n) {
   var r = 1;
   while (n > 1) {
@@ -9,4 +11,6 @@ function fact(n) {
 
 function main() {
   return fact(fact(3) - fact(2));
+}
+
 }

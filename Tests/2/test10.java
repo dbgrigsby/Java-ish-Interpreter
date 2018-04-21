@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 0;
 var y = x;
@@ -26,4 +28,6 @@ while (1 == 1) {
     continue;
 }
 return x * 100 + y * 10 + z;
+}
+
 }

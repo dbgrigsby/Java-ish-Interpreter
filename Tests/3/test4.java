@@ -1,3 +1,5 @@
+class A {
+
 function fib(a) {
   if (a == 0)
     return 0;
@@ -9,4 +11,6 @@ function fib(a) {
 
 function main() {
   return fib(10);
+}
+
 }

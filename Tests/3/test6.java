@@ -1,3 +1,5 @@
+class A {
+
 var a = 10;
 var b = 20;
 
@@ -14,4 +16,5 @@ function cmethod() {
 function main () {
   var b = 5;
   return cmethod() + a + b;
+}
 }

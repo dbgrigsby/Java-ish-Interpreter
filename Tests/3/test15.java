@@ -1,3 +1,5 @@
+class A {
+
 function f(n) {
   var a;
   var b;
@@ -25,4 +27,5 @@ function main() {
   var y = f(20);
 
   return x - y;
+}
 }

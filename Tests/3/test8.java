@@ -1,3 +1,5 @@
+class A {
+
 function fact(n) {
   var f = 1;
   while (n > 1) {
@@ -14,4 +16,5 @@ function binom(a, b) {
 
 function main() {
   return binom(6,3);
+}
 }

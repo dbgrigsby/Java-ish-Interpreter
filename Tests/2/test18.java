@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 10;
 var result = 1;
@@ -19,3 +21,5 @@ finally {
   result = result + x;
 }
 return result;}
+
+}

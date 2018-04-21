@@ -1,3 +1,5 @@
+class A {
+
 function gcd(a, &b) {
   if (a < b) {
     var temp = a;
@@ -17,4 +19,5 @@ function main () {
   var y = 3 * x - 7;
   gcd(x,y);
   return x+y;
+}
 }

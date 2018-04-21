@@ -1,4 +1,8 @@
+class A {
+
 function main() {
 var x = (5 * 7 - 3) / 2;
 return x;
+}
+
 }

@@ -1,3 +1,5 @@
+class A {
+
 function main() {
 var x = 10;
 var y = 4;
@@ -8,4 +10,6 @@ else {
   var min = y;
 }
 return min;
+}
+
 }
