@@ -116,3 +116,46 @@
                           (append (list (reverse (cons (list name arglist closure)
                                                        (reverse (car (get-value-section-state scope))))))
                                   (cdr (get-value-section-state scope))))))
+
+
+
+
+; Helper functions for easy access/lookup to our state for class operations
+; LOOKUP SECTION ----------------------------------------------------------
+(define G-lookup-class-closure-in-state
+  (lambda (classname state)
+    (car (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define G-is-class-in-state?
+  (lambda (classname state)
+    (G-declared? classname state)))
+
+(define G-lookup-class-superclass-in-state
+  (lambda (classname state)
+    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define G-lookup-class-static-field-in-state
+  (lambda (classname fieldname state)
+    (lookup-static-field-helper fieldname (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+; helper method for G-lookup-class-staticfield-in-state
+(define lookup-static-field-helper
+  (lambda (fieldname valuelist)
+    (cond
+      ((null? valuelist) (error "Static field not found for this class"))
+      ((eq? (caar valuelist) fieldname) (cadar valuelist))
+      (else (lookup-static-field-helper fieldname (cdr valuelist))))))
+
+(define G-lookup-class-static-method-in-state
+  (lambda (classname methodname state)
+    (lookup-static-method-helper methodname (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define lookup-static-method-helper
+  (lambda (methodname valuelist)
+    (cond
+      ((null? valuelist) (error "Static method not found for this class"))
+      ((eq? (caar valuelist) methodname) (cdar valuelist))
+      (else (lookup-static-method-helper methodname (cdr valuelist))))))
+ 
+; Helper functions for easy update to our state for class operations
+; UPDATE SECTION ---------------------------------------------------
