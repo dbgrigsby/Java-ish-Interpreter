@@ -7,19 +7,15 @@
 (require "state-manipulation.scm")
 (require "helpers.scm")
 
-; A basic file:
-(define testclasses '((class A (extends B) ())))
-(define firstclass (car testclasses))
-
-
 ; A simple file would be:
-; '((class A (extends B) ()))
+(define sf '((class A (extends B) ((var x 5))))) ; debug purposes
+
 ; Parses a parsed file into our state
 (define G-parsed-file-to-state->state
   (lambda (parsedFile state)
     (cond
       ((null? parsedFile) state)
-      ((G-parsed-file-to-state->state (cdr parsedFile) (G-add-class-to-state->state (car parsedFile) state))))))
+      (else (G-add-class-to-state->state (car parsedFile) state)))))
 
 ; adds a (class, closure) to the state, as well as its contents
 ; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
@@ -27,23 +23,25 @@
   (lambda (class state)
     (cond
       ((null? class) (error "Class is empty"))
-      ((eq? (car class) 'class) (G-add-class-contents-to-state->state (cdr class) initstate))
+      ((eq? (car class) 'class) (G-add-class-contents-to-state->state (cdr class) state))
       (else state))))
 
 ; Adds a class's contents to the state. This first adds the classname, any exending classes, then calls a helper to add contetns
+; contents = '(A (extends B) ((var x 5)))
 (define G-add-class-contents-to-state->state
   (lambda (contents state)
     (cond
       ((null? contents) state)
       (else (push-superclass-to-state->state (cadr contents)
-                                      (push-classname-to-state->state (car contents) (cddr contents) state))))))
+                                             (push-classname-to-state->state (car contents) (caddr contents) state))))))
 
 ; Pushes a (classname, name) to the value section of the most recent class in the top scope of the state
+; closure = '((var x 5) (var b 3))
 (define push-classname-to-state->state
   (lambda (classname closure state)
     (cond
       ((null? classname) (error "No classname"))
-      (else (cons (push-classname-to-scope->scope classname closure (get-top-scope state)) '())))))
+      (else (list (push-classname-to-scope->scope classname closure (get-top-scope state)))))))
 
 ; helper for push-classname-to-state-state, returns a classname pushed to the first scope's class
 (define push-classname-to-scope->scope
@@ -65,7 +63,7 @@
 
 (define push-superclass-to-state->state
   (lambda (supercontents state)
-    (cons (push-superclass-to-scope->scope supercontents (get-top-scope state)) '())))
+    (list (push-superclass-to-scope->scope supercontents (get-top-scope state)))))
 
 (define push-superclass-to-scope->scope
   (lambda (supercontents scope)
@@ -76,6 +74,6 @@
 (define add-superclass-to-scope
   (lambda (superclassname scope)
     (merge-scope-sections (get-variable-section-state scope)
-                          (append (list(reverse (cons (append '(superclass) (cons superclassname '()))
-                                         (reverse (car (get-value-section-state scope))))))
-                                  (cdr (get-variable-section-state scope))))))
+                          (append (list (reverse (cons (list 'superclass superclassname)
+                                               (reverse (car (get-value-section-state scope))))))
+                                (cdr (get-value-section-state scope))))))
