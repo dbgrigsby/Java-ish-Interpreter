@@ -8,14 +8,20 @@
 (require "helpers.scm")
 
 ; A simple file would be:
-(define sf '((class A (extends B) ((var x 5))))) ; debug purposes
+(define sf '((class A (extends B) ((var x 5))))) ; testing purposes
+; An advanced file would be:
+(define af '((class A (extends B) ((static-var x 5) (var y 10) (function foo (a) ((return a))) (static-function main () ()))))) ; testing purposes
+; A file with multiple classes would be:
+(define mf '((class A (extends B) ((static-var x 5) (var y 10) (function foo (a) ((return a))) (static-function main () ())))
+             (class B () ((static-var a 6) (var z 11) (function bar (b) ((return b))) (static-function main () ()))))) ; testing purposes
 
 ; Parses a parsed file into our state
 (define G-parsed-file-to-state->state
   (lambda (parsedFile state)
     (cond
       ((null? parsedFile) state)
-      (else (G-add-class-to-state->state (car parsedFile) state)))))
+      (else (G-parsed-file-to-state->state (cdr parsedFile)
+                                           (G-add-class-to-state->state (car parsedFile) state))))))
 
 ; adds a (class, closure) to the state, as well as its contents
 ; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
@@ -32,8 +38,9 @@
   (lambda (contents state)
     (cond
       ((null? contents) state)
-      (else (push-superclass-to-state->state (cadr contents)
-                                             (push-classname-to-state->state (car contents) (caddr contents) state))))))
+      (else (add-statics-to-state->state (caddr contents)
+                                         (push-superclass-to-state->state (cadr contents)
+                                                                          (push-classname-to-state->state (car contents) (caddr contents) state)))))))
 
 ; Pushes a (classname, name) to the value section of the most recent class in the top scope of the state
 ; closure = '((var x 5) (var b 3))
@@ -75,5 +82,37 @@
   (lambda (superclassname scope)
     (merge-scope-sections (get-variable-section-state scope)
                           (append (list (reverse (cons (list 'superclass superclassname)
-                                               (reverse (car (get-value-section-state scope))))))
-                                (cdr (get-value-section-state scope))))))
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
+
+; Adds static fields and methods to our state
+; e.g. '((class A (extends B) ((static-var x 5))))
+; closure = ((static-var x 5))
+(define add-statics-to-state->state
+  (lambda (closure state)
+    (list (add-statics-to-scope->scope closure (car state)))))
+
+(define add-statics-to-scope->scope
+  (lambda (closure scope)
+    (cond
+      ((null? closure) scope)
+      ((eq? (caar closure) 'static-var)
+       (add-statics-to-scope->scope (cdr closure) (add-static-var-to-scope (cadar closure) (caddar closure) scope)))
+      ((eq? (caar closure) 'static-function)
+       (add-statics-to-scope->scope (cdr closure) (add-static-function-to-scope (cadar closure) (caddar closure) (cdddar closure) scope)))
+      (else (add-statics-to-scope->scope (cdr closure) scope)))))
+
+(define add-static-var-to-scope
+  (lambda (variable value scope)
+    (merge-scope-sections (get-variable-section-state scope)
+                          (append (list (reverse (cons (list variable value)
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
+; example: 
+; '((class A () ((var x 5) (var y 10) (static-function main () ((var a (new A)) (return (+ (dot a x) (dot a y))))))))
+(define add-static-function-to-scope
+  (lambda (name arglist closure scope)
+    (merge-scope-sections (get-variable-section-state scope)
+                          (append (list (reverse (cons (list name arglist closure)
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
