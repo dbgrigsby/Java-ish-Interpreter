@@ -1,0 +1,118 @@
+; Brett Johnson
+; Adam Beck
+; Daniel Grigsby
+; This module parses a project-4 file and adds its contents to our state
+#lang racket
+(provide (all-defined-out))
+(require "state-manipulation.scm")
+(require "helpers.scm")
+
+; A simple file would be:
+(define sf '((class A (extends B) ((var x 5))))) ; testing purposes
+; An advanced file would be:
+(define af '((class A (extends B) ((static-var x 5) (var y 10) (function foo (a) ((return a))) (static-function main () ()))))) ; testing purposes
+; A file with multiple classes would be:
+(define mf '((class A (extends B) ((static-var x 5) (var y 10) (function foo (a) ((return a))) (static-function main () ())))
+             (class B () ((static-var a 6) (var z 11) (function bar (b) ((return b))) (static-function main () ()))))) ; testing purposes
+
+; Parses a parsed file into our state
+(define G-parsed-file-to-state->state
+  (lambda (parsedFile state)
+    (cond
+      ((null? parsedFile) state)
+      (else (G-parsed-file-to-state->state (cdr parsedFile)
+                                           (G-add-class-to-state->state (car parsedFile) state))))))
+
+; adds a (class, closure) to the state, as well as its contents
+; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
+(define G-add-class-to-state->state
+  (lambda (class state)
+    (cond
+      ((null? class) (error "Class is empty"))
+      ((eq? (car class) 'class) (G-add-class-contents-to-state->state (cdr class) state))
+      (else state))))
+
+; Adds a class's contents to the state. This first adds the classname, any exending classes, then calls a helper to add contetns
+; contents = '(A (extends B) ((var x 5)))
+(define G-add-class-contents-to-state->state
+  (lambda (contents state)
+    (cond
+      ((null? contents) state)
+      (else (add-statics-to-state->state (caddr contents)
+                                         (push-superclass-to-state->state (cadr contents)
+                                                                          (push-classname-to-state->state (car contents) (caddr contents) state)))))))
+
+; Pushes a (classname, name) to the value section of the most recent class in the top scope of the state
+; closure = '((var x 5) (var b 3))
+(define push-classname-to-state->state
+  (lambda (classname closure state)
+    (cond
+      ((null? classname) (error "No classname"))
+      (else (list (push-classname-to-scope->scope classname closure (get-top-scope state)))))))
+
+; helper for push-classname-to-state-state, returns a classname pushed to the first scope's class
+(define push-classname-to-scope->scope
+  (lambda (name closure scope)
+    (merge-scope-sections (add-name-to-scope name scope)
+                          (add-closure-to-scope closure scope))))
+
+(define merge-scope-sections
+  (lambda (variables values)
+    (list variables values)))
+
+(define add-name-to-scope
+  (lambda (name scope)
+    (cons name (get-variable-section-state scope))))
+
+(define add-closure-to-scope
+  (lambda (closure scope)
+    (cons (list closure) (get-value-section-state scope))))
+
+(define push-superclass-to-state->state
+  (lambda (supercontents state)
+    (list (push-superclass-to-scope->scope supercontents (get-top-scope state)))))
+
+(define push-superclass-to-scope->scope
+  (lambda (supercontents scope)
+    (cond
+      ((null? supercontents) (add-superclass-to-scope '() scope))
+      (else (add-superclass-to-scope (cadr supercontents) scope)))))
+
+(define add-superclass-to-scope
+  (lambda (superclassname scope)
+    (merge-scope-sections (get-variable-section-state scope)
+                          (append (list (reverse (cons (list 'superclass superclassname)
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
+
+; Adds static fields and methods to our state
+; e.g. '((class A (extends B) ((static-var x 5))))
+; closure = ((static-var x 5))
+(define add-statics-to-state->state
+  (lambda (closure state)
+    (list (add-statics-to-scope->scope closure (car state)))))
+
+(define add-statics-to-scope->scope
+  (lambda (closure scope)
+    (cond
+      ((null? closure) scope)
+      ((eq? (caar closure) 'static-var)
+       (add-statics-to-scope->scope (cdr closure) (add-static-var-to-scope (cadar closure) (caddar closure) scope)))
+      ((eq? (caar closure) 'static-function)
+       (add-statics-to-scope->scope (cdr closure) (add-static-function-to-scope (cadar closure) (caddar closure) (cdddar closure) scope)))
+      (else (add-statics-to-scope->scope (cdr closure) scope)))))
+
+(define add-static-var-to-scope
+  (lambda (variable value scope)
+    (merge-scope-sections (get-variable-section-state scope)
+                          (append (list (reverse (cons (list variable value)
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
+; example: 
+; '((class A () ((var x 5) (var y 10) (static-function main () ((var a (new A)) (return (+ (dot a x) (dot a y))))))))
+(define add-static-function-to-scope
+  (lambda (name arglist closure scope)
+    (merge-scope-sections (get-variable-section-state scope)
+                          (append (list (reverse (cons (list name arglist closure)
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
