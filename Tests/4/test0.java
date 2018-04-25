@@ -1,25 +1,19 @@
-class A extends B{
-    static var x = 5;
-    var y = 10;
-    
-    function foo(a) {
-        return a;
-    }
-    static function main() {
+class A {
 
-    }
+  var x = 100;
 
+  function add(x) {
+    return this.x + x;
+  }
+
+  static function main() {
+    var a = new A();
+    return a.add(25);
+  }
 }
 
-class B{
-    static var a = 6;
-    var z = 11;
-    
-    function bar(b) {
-        return b;
-    }
-    static function main() {
-	
-    }
+class B extends A {
+
+  static var a = 50;
 
 }

@@ -7,6 +7,7 @@
 (require "state-manipulation.scm")
 (require "helpers.scm")
 
+; WORKING TEST CASES ---------------------------------------------
 ; A simple file would be:
 (define sf '((class A (extends B) ((var x 5))))) ; testing purposes
 ; An advanced file would be:
@@ -14,8 +15,11 @@
 ; A file with multiple classes would be:
 (define mf '((class A (extends B) ((static-var x 5) (var y 10) (function foo (a) ((return a))) (static-function main () ())))
              (class B () ((static-var a 6) (var z 11) (function bar (b) ((return b))) (static-function main () ()))))) ; testing purposes
+; A complicated multiple class parse would be:
+(define cf '((class A () ((var x 100) (function add (x) ((return (+ (dot this x) x)))) (static-function main () ((var a (new A)) (return (funcall (dot a add) 25))))))
+             (class B (extends A) ((static-var a 50)))) ) ; testing purposes
 
-; Parses a parsed file into our state
+; Parses a parsed file into our state (which initially is our initstate)
 (define G-parsed-file-to-state->state
   (lambda (parsedFile state)
     (cond
@@ -88,74 +92,30 @@
 ; Adds static fields and methods to our state
 ; e.g. '((class A (extends B) ((static-var x 5))))
 ; closure = ((static-var x 5))
+; For each element in the closure, push it to our state, then pop the top scope to get a scope
 (define add-statics-to-state->state
   (lambda (closure state)
-    (list (add-statics-to-scope->scope closure (car state)))))
+    (list (add-statics-to-scope->scope closure (car state) initstate))))
 
+; For each element in the closure, push it to a state, then take the top scope, and append it to the classcope
+; classcope is '((B A) ((contents1) (contents2)))
 (define add-statics-to-scope->scope
-  (lambda (closure scope)
+  (lambda (closure classcope nestedstate)
     (cond
-      ((null? closure) scope)
+      ((null? closure); merge nestedstate as an element to our class contents
+       (merge-scope-sections (get-variable-section-state classcope)
+                             (append (list (reverse (cons (car nestedstate)
+                                                          (reverse (car (get-value-section-state classcope)))))
+                                           (cdr (get-value-section-state classcope))))))
       ((eq? (caar closure) 'static-var)
-       (add-statics-to-scope->scope (cdr closure) (add-static-var-to-scope (cadar closure) (caddar closure) scope)))
+       (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (caddar closure) nestedstate)))
       ((eq? (caar closure) 'static-function)
-       (add-statics-to-scope->scope (cdr closure) (add-static-function-to-scope (cadar closure) (caddar closure) (cdddar closure) scope)))
-      (else (add-statics-to-scope->scope (cdr closure) scope)))))
-
-(define add-static-var-to-scope
-  (lambda (variable value scope)
-    (merge-scope-sections (get-variable-section-state scope)
-                          (append (list (reverse (cons (list variable value)
-                                                       (reverse (car (get-value-section-state scope))))))
-                                  (cdr (get-value-section-state scope))))))
-; example: 
-; '((class A () ((var x 5) (var y 10) (static-function main () ((var a (new A)) (return (+ (dot a x) (dot a y))))))))
-(define add-static-function-to-scope
-  (lambda (name arglist closure scope)
-    (merge-scope-sections (get-variable-section-state scope)
-                          (append (list (reverse (cons (list name arglist closure)
-                                                       (reverse (car (get-value-section-state scope))))))
-                                  (cdr (get-value-section-state scope))))))
-
-
-
+       (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (cddar closure) nestedstate)))
+      (else (add-statics-to-scope->scope (cdr closure) classcope nestedstate)))))
 
 ; Helper functions for easy access/lookup to our state for class operations
 ; LOOKUP SECTION ----------------------------------------------------------
-(define G-lookup-class-closure-in-state
-  (lambda (classname state)
-    (car (get-value-from-pair (G-value-lookup->value_state classname state '())))))
-
-(define G-is-class-in-state?
-  (lambda (classname state)
-    (G-declared? classname state)))
-
-(define G-lookup-class-superclass-in-state
-  (lambda (classname state)
-    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
-
-(define G-lookup-class-static-field-in-state
-  (lambda (classname fieldname state)
-    (lookup-static-field-helper fieldname (get-value-from-pair (G-value-lookup->value_state classname state '())))))
-
-; helper method for G-lookup-class-staticfield-in-state
-(define lookup-static-field-helper
-  (lambda (fieldname valuelist)
-    (cond
-      ((null? valuelist) (error "Static field not found for this class"))
-      ((eq? (caar valuelist) fieldname) (cadar valuelist))
-      (else (lookup-static-field-helper fieldname (cdr valuelist))))))
-
-(define G-lookup-class-static-method-in-state
-  (lambda (classname methodname state)
-    (lookup-static-method-helper methodname (get-value-from-pair (G-value-lookup->value_state classname state '())))))
-
-(define lookup-static-method-helper
-  (lambda (methodname valuelist)
-    (cond
-      ((null? valuelist) (error "Static method not found for this class"))
-      ((eq? (caar valuelist) methodname) (cdar valuelist))
-      (else (lookup-static-method-helper methodname (cdr valuelist))))))
  
 ; Helper functions for easy update to our state for class operations
 ; UPDATE SECTION ---------------------------------------------------
+
