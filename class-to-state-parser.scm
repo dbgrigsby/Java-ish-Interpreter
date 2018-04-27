@@ -18,6 +18,7 @@
 ; A complicated multiple class parse would be:
 (define cf '((class A () ((var x 100) (function add (x) ((return (+ (dot this x) x)))) (static-function main () ((var a (new A)) (return (funcall (dot a add) 25))))))
              (class B (extends A) ((static-var a 50)))) ) ; testing purposes
+;-----------------------------------------------------------------
 
 ; Parses a parsed file into our state (which initially is our initstate)
 (define G-parsed-file-to-state->state
@@ -115,10 +116,38 @@
 
 ; Helper functions for easy access/lookup to our state for class operations
 ; LOOKUP SECTION ----------------------------------------------------------
-(define G-get-staticstate-from-state->staticstate
+
+; Gets a class's staticscope (the scope with static fields and functions)
+(define G-get-class-closure
   (lambda (classname state)
-    (cddar (variable-value-lookup classname state))))
-      
- 
+    (car (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define G-get-class-superclass
+  (lambda (classname state)
+    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define G-get-class-staticscope->staticscope
+  (lambda (classname state)
+    (caddr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
 ; Helper functions for easy update to our state for class operations
 ; UPDATE SECTION ---------------------------------------------------
+
+; we need a function to replace a static scope with a new one, before we tackle the problem of pushing to a static scope
+;(define G-replace-class-staticscope->state
+;  (lambda (classname staticscope state)
+;    (cond
+;      ((null? state) (error "The state is empty"))
+;      ((null? (cdr state)) (replace-staticscope-for-scope (car state) staticscope))
+;      (else (G-replace-class-staticscope->state classname staticscope (cdr state))))))
+
+; scope = '((a b) ((closure, super, staticscope) (closure2, super2, staticscope2))
+; staticscope = a new staticscope to replace the old one
+;(define replace-staticscope-for-scope
+;  (lambda (classname statiscope scope)
+;    ))
+    
+
+
+
+
