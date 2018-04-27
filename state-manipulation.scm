@@ -302,11 +302,20 @@
       ((G-declared-in-stack-frame? (get-var-name-from-declare-args arglist) state)
        (error "variable already declared" (get-var-name-from-declare-args arglist) state))
       ((only-declare? arglist) (declare-var->state (get-var-name-from-declare-args arglist) state))
-      (else
-       (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state cfuncsinstance)])
+      ((list? (car (truncate-var-name-from-declare arglist))) ; check to see if we are initializing an instance
+       (add-instance-to-state (get-var-name-from-declare-args arglist) (car (truncate-var-name-from-declare arglist)) state))
+       (else (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state cfuncsinstance)])
          (initialize-var->state (get-var-name-from-declare-args arglist)
                                 (get-value-from-pair evaluate-assign)
                                 (get-state-from-pair evaluate-assign)))))))
+
+; Adds an instance to the state. The value of the instance is '(type (instancestate))
+; value is a list: e.g. (new A). Prereq: the name of the instance has not been declared in the current stack frame
+(define add-instance-to-state
+  (lambda (name value state)
+    (let* ([cn (cadr value)])
+      (cond
+        (else (initialize-var->state name (list (list 'classname cn) (G-eval-class-closure->state cn state)) state))))))
 
 
 ; Pushes the declaration statement to the state
