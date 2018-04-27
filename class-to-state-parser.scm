@@ -24,8 +24,8 @@
   (lambda (parsedFile state)
     (cond
       ((null? parsedFile) state)
-      (else (G-parsed-file-to-state->state (cdr parsedFile)
-                                           (G-add-class-to-state->state (car parsedFile) state))))))
+      (else  (G-parsed-file-to-state->state (cdr parsedFile)
+                                            (G-add-class-to-state->state (car parsedFile) state))))))
 
 ; adds a (class, closure) to the state, as well as its contents
 ; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
@@ -105,8 +105,8 @@
       ((null? closure); merge nestedstate as an element to our class contents
        (merge-scope-sections (get-variable-section-state classcope)
                              (append (list (reverse (cons (car nestedstate)
-                                                          (reverse (car (get-value-section-state classcope)))))
-                                           (cdr (get-value-section-state classcope))))))
+                                                          (reverse (car (get-value-section-state classcope))))))
+                                     (cdr (get-value-section-state classcope)))))
       ((eq? (caar closure) 'static-var)
        (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (caddar closure) nestedstate)))
       ((eq? (caar closure) 'static-function)
@@ -115,7 +115,10 @@
 
 ; Helper functions for easy access/lookup to our state for class operations
 ; LOOKUP SECTION ----------------------------------------------------------
+(define G-get-staticstate-from-state->staticstate
+  (lambda (classname state)
+    (cddar (variable-value-lookup classname state))))
+      
  
 ; Helper functions for easy update to our state for class operations
 ; UPDATE SECTION ---------------------------------------------------
-
