@@ -6,6 +6,7 @@
 (provide (all-defined-out))
 (require "state-manipulation.scm")
 (require "helpers.scm")
+;(require "closure-to-instance-parser.scm")
 
 ; WORKING TEST CASES ---------------------------------------------
 ; A simple file would be:
@@ -17,7 +18,7 @@
              (class B () ((static-var a 6) (var z 11) (function bar (b) ((return b))) (static-function main () ()))))) ; testing purposes
 ; A complicated multiple class parse would be:
 (define cf '((class A () ((var x 100) (function add (x) ((return (+ (dot this x) x)))) (static-function main () ((var a (new A)) (return (funcall (dot a add) 25))))))
-             (class B (extends A) ((static-var a 50)))) ) ; testing purposes
+             (class B (extends A) ((var x 20) (function add (x) ((return (+ (dot this x) x)))) (static-var a 50))))) ; testing purposes
 ;-----------------------------------------------------------------
 
 ; Parses a parsed file into our state (which initially is our initstate)
