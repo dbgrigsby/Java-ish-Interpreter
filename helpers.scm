@@ -100,3 +100,6 @@
 
 ; Class Helpers
 (define class-layer-from-state->state (lambda (state) (car (reverse state))))
+
+(define dotted-class-instance car)
+(define dotted-class-call cadr)

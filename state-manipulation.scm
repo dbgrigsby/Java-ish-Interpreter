@@ -393,13 +393,12 @@
 
 (define evaluate-dotted-expr->value_state
   (lambda (arglist state cfuncsinstance)
-    (error "method stub: (value from right) (repair-state
-      (lookup valname (add-instance-to-state (get-instance-by-name
-        (instance-name arglist) state))))")))
-
+    (list (dotted-class-call arglist)
+          (add-class-instance-to-state (dotted-class-instance arglist)(G-pop-to-class-level->state state)))))
+ 
 (define add-class-instance-to-state
  (lambda (instancename state)
-   ((G-get-instance-state instancename state))))
+   (append (G-get-instance-state instancename state) (G-push-class-divider-to-state->state state))))
 
 (define update-class-instance
   (lambda (instancename new-instance-state state)
@@ -409,15 +408,15 @@
      state)))
 
 
-(define G-pop-to-class-level
+(define G-pop-to-class-level->state
   (lambda (state)
-    (list (class-layer-from-state->state state))))
+    (list (car (reverse state)))))
 
 
 ; Pushes a stack divider to a state
 (define G-push-class-divider-to-state->state
   (lambda (state)
-    (cons '((.cf) (0)) state)))
+    (cons '((.cf) (())) state)))
 
 
 (define G-pop-to-class-divider->state
@@ -425,7 +424,7 @@
     (cond
       ((null? state) (error "No this divider found"))
       ((is-top-scope-class-divider? state) (get-tail-scope state))
-      (else (G-pop-to-class-level (get-tail-scope state))))))
+      (else (G-pop-to-class-divider->state (get-tail-scope state))))))
 
 ; Determines if the top scope in a state is the stack divider
 (define is-top-scope-class-divider?
