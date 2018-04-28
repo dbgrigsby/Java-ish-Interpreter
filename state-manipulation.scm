@@ -377,12 +377,11 @@
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
+      ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist)))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
       (else (error "not a valid atomic statement" arglist state)))))
-
-; DOT EVALUATION Section
 
 ; STUB
 (define dot-expr? 
