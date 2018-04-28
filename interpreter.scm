@@ -13,7 +13,7 @@
 (define interpret
   (lambda (filename)
     (with-handlers ([exn:fail? error->handler])
-      (output->formatter (get-value-from-pair (evaluate-parse-tree->retval_state (append-main (parser filename)) initstate))))))
+      (output->formatter (get-value-from-pair (evaluate-parse-tree->retval_state (append-main (parser filename)) initstate)))))))
 
 (define append-main
   (lambda (program)

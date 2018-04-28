@@ -120,6 +120,20 @@
 
 (define G-eval-function->value_state
   (lambda (name args state cfuncsinstance)
+    (cond
+      ((dot-expr? name)
+       (let* ([evaled-function (eval-function-post-name-eval (evaluate-dotted-function-name name state)
+                                     args
+                                     (evaluate-dotted-function-state name state)
+                                     cfuncsinstance)]
+              [function-return (get-value-from-pair evaled-function)]
+              [function-state (get-state-from-pair evaled-function)])
+         (update-class-instance (dotted-class-instance name) (extract-new-class-instance-state function-state) state)))
+         
+      (else (eval-function-post-name-eval name args state cfuncsinstance))))) 
+      
+(define eval-function-post-name-eval
+  (lambda (name args state cfuncsinstance)
     (let* ([function-in-state (variable-value-lookup name state)]
            [popped-state (G-add-empty-scope-to-state->state
                           (G-push-stack-divider-to-state->state
@@ -168,6 +182,63 @@
          (cons
           (get-value-from-pair value-lookup)
           (evaluate-actual-args (cdr actual) (get-state-from-pair value-lookup) cfuncsinstance)))))))
+
+(define evaluate-dotted-function-name
+  (lambda (arglist state)
+    (dotted-class-call arglist)))
+
+(define evaluate-dotted-function-state
+  (lambda (arglist state)
+    (add-class-instance-to-state (dotted-class-instance arglist) (G-pop-to-class-level->state state))))
+
+(define add-class-instance-to-state
+ (lambda (instancename state)
+   (G-push-class-divider-to-state->state (append (G-get-instance-state instancename state) state))))
+
+(define extract-new-class-instance-state
+  (lambda (state)
+    (reverse (extract-new-class-instance-state-sub (get-tail-scope (reverse state))))))
+
+(define extract-new-class-instance-state-sub
+ (lambda (state)
+   (cond
+     ((null? state) (error "no class divider found"))
+     ((is-top-scope-class-divider? state) '())
+     (else (cons (get-top-scope state) (extract-new-class-instance-state-sub (get-tail-scope state)))))))
+    
+(define update-class-instance
+  (lambda (instancename new-instance-state state)
+    (G-push-state->state
+     instancename
+     (list (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))) new-instance-state)
+     state)))
+
+
+(define G-pop-to-class-level->state
+  (lambda (state)
+    (list (car (reverse state)))))
+
+
+; Pushes a stack divider to a state
+(define G-push-class-divider-to-state->state
+  (lambda (state)
+    (cons '((.cf) (())) state)))
+
+
+(define G-pop-to-class-divider->state
+  (lambda (state)
+    (cond
+      ((null? state) (error "No this divider found"))
+      ((is-top-scope-class-divider? state) (get-tail-scope state))
+      (else (G-pop-to-class-divider->state (get-tail-scope state))))))
+
+; Determines if the top scope in a state is the stack divider
+(define is-top-scope-class-divider?
+  (lambda (state)
+    (cond
+      ((null? (get-variable-section-head (get-top-scope state))) #f)
+      (else (eq? (get-scope-variable-head (get-top-scope state)) '.cf)))))
+
 
 ; TODO add side effects
 
@@ -393,48 +464,8 @@
 
 (define evaluate-dotted-expr->value_state
   (lambda (arglist state cfuncsinstance)
-    (list (dotted-class-call arglist)
-          (add-class-instance-to-state (dotted-class-instance arglist)(G-pop-to-class-level->state state)))))
+    (G-value-lookup->value_state (dotted-class-instance arglist) (G-get-instance-state (dotted-class-instance arglist) state) cfuncsinstance)))
  
-(define add-class-instance-to-state
- (lambda (instancename state)
-   (append (G-get-instance-state instancename state) (G-push-class-divider-to-state->state state))))
-
-(define update-class-instance
-  (lambda (instancename new-instance-state state)
-    (G-push-state->state
-     instancename
-     (list (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))) new-instance-state)
-     state)))
-
-
-(define G-pop-to-class-level->state
-  (lambda (state)
-    (list (car (reverse state)))))
-
-
-; Pushes a stack divider to a state
-(define G-push-class-divider-to-state->state
-  (lambda (state)
-    (cons '((.cf) (())) state)))
-
-
-(define G-pop-to-class-divider->state
-  (lambda (state)
-    (cond
-      ((null? state) (error "No this divider found"))
-      ((is-top-scope-class-divider? state) (get-tail-scope state))
-      (else (G-pop-to-class-divider->state (get-tail-scope state))))))
-
-; Determines if the top scope in a state is the stack divider
-(define is-top-scope-class-divider?
-  (lambda (state)
-    (cond
-      ((null? (get-variable-section-head (get-top-scope state))) #f)
-      (else (eq? (get-scope-variable-head (get-top-scope state)) '.cf)))))
-
-
-
 ; FUNCALL Section
 
 ; eval function atomic statement section
