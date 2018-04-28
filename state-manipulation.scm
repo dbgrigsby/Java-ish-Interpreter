@@ -445,7 +445,7 @@
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
-      ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist)))
+      ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist) state cfuncsinstance))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
@@ -462,10 +462,13 @@
   (lambda (arglist)
     (arglist-tail arglist)))
 
+
 (define evaluate-dotted-expr->value_state
   (lambda (arglist state cfuncsinstance)
-    (G-value-lookup->value_state (dotted-class-instance arglist) (G-get-instance-state (dotted-class-instance arglist) state) cfuncsinstance)))
- 
+    (list (get-value-from-pair
+           (G-value-lookup->value_state (dotted-class-call arglist) (G-get-instance-state (dotted-class-instance arglist) state) cfuncsinstance))
+           state)))
+
 ; FUNCALL Section
 
 ; eval function atomic statement section
