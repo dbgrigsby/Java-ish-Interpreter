@@ -397,6 +397,10 @@
       (lookup valname (add-instance-to-state (get-instance-by-name
         (instance-name arglist) state))))")))
 
+(define add-class-instance-to-state
+ (lambda (instancename state)
+   ((G-get-instance-state instancename state))))
+
 (define update-class-instance
   (lambda (instancename new-instance-state state)
     (G-push-state->state
@@ -420,8 +424,8 @@
   (lambda (state)
     (cond
       ((null? state) (error "No this divider found"))
-      ((is-top-scope-this-divider? state) (get-tail-scope state))
-      (else (G-pop-to-this-divider->state (get-tail-scope state))))))
+      ((is-top-scope-class-divider? state) (get-tail-scope state))
+      (else (G-pop-to-class-level (get-tail-scope state))))))
 
 ; Determines if the top scope in a state is the stack divider
 (define is-top-scope-class-divider?
