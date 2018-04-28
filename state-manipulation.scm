@@ -6,7 +6,7 @@
 
 (require "expression-ops.scm")
 (require "state-structs.scm")
-(require "helpers.scm")
+(require "helpers.scm")                  
 (require racket/base)
 (require racket/trace)
 
@@ -95,7 +95,11 @@
 
       (else (get-state-from-pair (G-eval-atomic-statement->value_state arglist state cfuncsinstance))))))
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 ; Function definition section
 
@@ -168,6 +172,11 @@
 ; TODO add side effects
 
 
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 ; if statement section
 
@@ -204,6 +213,11 @@
   (lambda (arglist)
     (pair? (get-else-from-if-else arglist))))
 
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 ; try catch section
 ; Eval try statement
@@ -250,9 +264,13 @@
 
 
 
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 ; while loop section
-
 ; Returns the value yielded from a while statement and the updated state
 (define G-evaluate-while-statement->state
   (lambda (arglist state cfuncsinstance)
@@ -289,7 +307,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -335,7 +357,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -391,7 +417,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -422,7 +452,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -557,7 +591,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -629,7 +667,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -666,7 +708,11 @@
 
 
 
-
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
 
 
 ; Pushing state section
@@ -827,3 +873,158 @@
     (cond
       ((null? (get-variable-section-head (get-top-scope state))) #f)
       (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
+
+(define G-eval-class-closure->state
+  (lambda (classname state)
+    (cond
+      ((null? (G-get-class-superclass classname state)) (evaluate-closure->state classname state))
+      (else (cons (get-top-scope (evaluate-closure->state classname state)) (G-eval-class-closure->state (G-get-class-superclass classname state) state))))))
+
+(define evaluate-closure->state
+  (lambda (classname state)
+    (evaluate-closure-statement-list->state (G-get-class-closure classname state) initstate empty-cfuncs)))
+                                                 
+(define evaluate-closure-statement-list->state
+  (lambda (program state cfuncsinstance)
+    (cond
+      ((null? program) state)
+      ((not (list? program)) (error "Invalid program syntax"))
+      ((pair? (program-head program))
+       (evaluate-closure-statement-list->state
+        (program-tail program)
+        (evaluate-closure-statement->state (program-head program) state cfuncsinstance)
+        cfuncsinstance))
+      (else (error "Invalid statement list syntax")))))
+
+(define evaluate-closure-statement->state
+  (lambda (arglist state cfuncsinstance)
+    (cond
+      ((null? arglist) (error "Not a statement"))
+
+      ((eq? 'var (get-upcoming-statement-name arglist))
+       (G-evaluate-var-declare-statement->state arglist state cfuncsinstance))
+
+      ((eq? 'static-var (get-upcoming-statement-name arglist)) state)
+
+      ((eq? 'function (get-upcoming-statement-name arglist))
+       (G-define-function->state (arglist-tail arglist) state cfuncsinstance))
+      
+      ((eq? 'static-function (get-upcoming-statement-name arglist)) state)
+
+      (else (error "Not a valid statement" arglist)))))
+
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+
+; Parses a parsed file into our state (which initially is our initstate)
+(define G-parsed-file-to-state->state
+  (lambda (parsedFile state)
+    (cond
+      ((null? parsedFile) state)
+      (else  (G-parsed-file-to-state->state (cdr parsedFile)
+                                            (G-add-class-to-state->state (car parsedFile) state))))))
+
+; adds a (class, closure) to the state, as well as its contents
+; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
+(define G-add-class-to-state->state
+  (lambda (class state)
+    (cond
+      ((null? class) (error "Class is empty"))
+      ((eq? (car class) 'class) (G-add-class-contents-to-state->state (cdr class) state))
+      (else state))))
+
+; Adds a class's contents to the state. This first adds the classname, any exending classes, then calls a helper to add contetns
+; contents = '(A (extends B) ((var x 5)))
+(define G-add-class-contents-to-state->state
+  (lambda (contents state)
+    (cond
+      ((null? contents) state)
+      (else (add-statics-to-state->state (caddr contents)
+                                         (push-superclass-to-state->state (cadr contents)
+                                                                          (push-classname-to-state->state (car contents) (caddr contents) state)))))))
+
+; Pushes a (classname, name) to the value section of the most recent class in the top scope of the state
+; closure = '((var x 5) (var b 3))
+(define push-classname-to-state->state
+  (lambda (classname closure state)
+    (cond
+      ((null? classname) (error "No classname"))
+      (else (list (push-classname-to-scope->scope classname closure (get-top-scope state)))))))
+
+; helper for push-classname-to-state-state, returns a classname pushed to the first scope's class
+(define push-classname-to-scope->scope
+  (lambda (name closure scope)
+    (merge-scope-sections (add-name-to-scope name scope)
+                          (add-closure-to-scope closure scope))))
+
+(define merge-scope-sections
+  (lambda (variables values)
+    (list variables values)))
+
+(define add-name-to-scope
+  (lambda (name scope)
+    (cons name (get-variable-section-state scope))))
+
+(define add-closure-to-scope
+  (lambda (closure scope)
+    (cons (list closure) (get-value-section-state scope))))
+
+(define push-superclass-to-state->state
+  (lambda (supercontents state)
+    (list (push-superclass-to-scope->scope supercontents (get-top-scope state)))))
+
+(define push-superclass-to-scope->scope
+  (lambda (supercontents scope)
+    (cond
+      ((null? supercontents) (add-superclass-to-scope '() scope))
+      (else (add-superclass-to-scope (cadr supercontents) scope)))))
+
+(define add-superclass-to-scope
+  (lambda (superclassname scope)
+    (merge-scope-sections (get-variable-section-state scope)
+                          (append (list (reverse (cons (list 'superclass superclassname)
+                                                       (reverse (car (get-value-section-state scope))))))
+                                  (cdr (get-value-section-state scope))))))
+
+; Adds static fields and methods to our state
+; e.g. '((class A (extends B) ((static-var x 5))))
+; closure = ((static-var x 5))
+; For each element in the closure, push it to our state, then pop the top scope to get a scope
+(define add-statics-to-state->state
+  (lambda (closure state)
+    (list (add-statics-to-scope->scope closure (car state) initstate))))
+
+; For each element in the closure, push it to a state, then take the top scope, and append it to the classcope
+; classcope is '((B A) ((contents1) (contents2)))
+(define add-statics-to-scope->scope
+  (lambda (closure classcope nestedstate)
+    (cond
+      ((null? closure); merge nestedstate as an element to our class contents
+       (merge-scope-sections (get-variable-section-state classcope)
+                             (append (list (reverse (cons (car nestedstate)
+                                                          (reverse (car (get-value-section-state classcope))))))
+                                     (cdr (get-value-section-state classcope)))))
+      ((eq? (caar closure) 'static-var)
+       (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (caddar closure) nestedstate)))
+      ((eq? (caar closure) 'static-function)
+       (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (cddar closure) nestedstate)))
+      (else (add-statics-to-scope->scope (cdr closure) classcope nestedstate)))))
+
+; Helper functions for easy access/lookup to our state for class operations
+; LOOKUP SECTION ----------------------------------------------------------
+
+; Gets a class's staticscope (the scope with static fields and functions)
+(define G-get-class-closure
+  (lambda (classname state)
+    (car (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define G-get-class-superclass
+  (lambda (classname state)
+    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+
+(define G-get-class-staticscope->staticscope
+  (lambda (classname state)
+    (caddr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
