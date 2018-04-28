@@ -377,10 +377,26 @@
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
+      ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist)))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
       (else (error "not a valid atomic statement" arglist state)))))
+
+; STUB
+(define dot-expr? 
+  (lambda (arglist)
+    (error "method stub: dot-expr")))
+
+(define evaluate-dotted-expr->value_state
+  (lambda (arglist state cfuncsinstance)
+    (error "method stub: (value from right) (repair-state 
+      (lookup valname (add-instance-to-state (get-instance-by-name 
+        (instance-name arglist) state))))")))
+
+(define arglist-dot
+  (lambda (arglist)
+    (error "method stub: arglist-dot")))
 
 ; eval function atomic statement section
 (define is-funcall?
