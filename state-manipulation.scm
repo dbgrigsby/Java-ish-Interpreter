@@ -6,7 +6,7 @@
 
 (require "expression-ops.scm")
 (require "state-structs.scm")
-(require "helpers.scm")                  
+(require "helpers.scm")
 (require racket/base)
 (require racket/trace)
 
@@ -24,7 +24,7 @@
 (define evaluate-parse-tree->retval_state
   (lambda (program state)
     (evaluate-parse-tree-with-cfuncs->retval_state program state empty-cfuncs)))
-                                                   
+
 (define evaluate-parse-tree-with-cfuncs->retval_state
   (lambda (program state cfuncsinstance)
     (call/cc
@@ -103,7 +103,7 @@
 
 ; Function definition section
 
-(define G-define-function->state 
+(define G-define-function->state
   (lambda (arglist state cfuncsinstance)
     (declare-function (get-function-name arglist) (get-function-formal-args arglist) (get-function-body arglist) state)))
 
@@ -118,7 +118,7 @@
                                    state)))))
 
 
-(define G-eval-function->value_state 
+(define G-eval-function->value_state
   (lambda (name args state cfuncsinstance)
     (let* ([function-in-state (variable-value-lookup name state)]
            [popped-state (G-add-empty-scope-to-state->state
@@ -383,15 +383,23 @@
       (else (error "not a valid atomic statement" arglist state)))))
 
 ; STUB
-(define dot-expr? 
+(define dot-expr?
   (lambda (arglist)
-    (error "method stub: dot-expr")))
+    (eq? (arglist-head arglist) 'dot)))
+
+(define arglist-dot
+  (lambda (arglist)
+    (arglist-tail arglist)))
 
 (define evaluate-dotted-expr->value_state
   (lambda (arglist state cfuncsinstance)
-    (error "method stub: (value from right) (repair-state 
-      (lookup valname (add-instance-to-state (get-instance-by-name 
+    (error "method stub: (value from right) (repair-state
+      (lookup valname (add-instance-to-state (get-instance-by-name
         (instance-name arglist) state))))")))
+
+(define add-class-instance-to-state
+ (lambda (instancename state)
+   ((G-get-instance-state instancename state))))
 
 (define update-class-instance
   (lambda (instancename new-instance-state state)
@@ -401,19 +409,13 @@
      state)))
 
 
-
-(define arglist-dot
-  (lambda (arglist)
-    (error "method stub: arglist-dot")))
-
-
-(define G-pop-to-class-level 
+(define G-pop-to-class-level
   (lambda (state)
     (list (class-layer-from-state->state state))))
 
 
 ; Pushes a stack divider to a state
-(define G-push-stack-divider-to-state->state
+(define G-push-class-divider-to-state->state
   (lambda (state)
     (cons '((.cf) (0)) state)))
 
@@ -422,8 +424,8 @@
   (lambda (state)
     (cond
       ((null? state) (error "No this divider found"))
-      ((is-top-scope-this-divider? state) (get-tail-scope state))
-      (else (G-pop-to-this-divider->state (get-tail-scope state))))))
+      ((is-top-scope-class-divider? state) (get-tail-scope state))
+      (else (G-pop-to-class-level (get-tail-scope state))))))
 
 ; Determines if the top scope in a state is the stack divider
 (define is-top-scope-class-divider?
@@ -596,7 +598,7 @@
     ; The value is derived from applying the operator on arg1 and arg2
     ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
     (let* ([lookup-arg1 (G-value-lookup->value_state arg1 state cfuncsinstance)]
-           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) cfuncsinstance)]) 
+           [lookup-arg2 (G-value-lookup->value_state arg2 (get-state-from-pair lookup-arg1) cfuncsinstance)])
       (cons ((compare-operator-to-function-multi op) (get-value-from-pair lookup-arg1)
                                                      (get-value-from-pair lookup-arg2))
             (list (get-state-from-pair lookup-arg2))))))
@@ -950,7 +952,7 @@
 (define evaluate-closure->state
   (lambda (classname state)
     (evaluate-closure-statement-list->state (G-get-class-closure classname state) initstate empty-cfuncs)))
-                                                 
+
 (define evaluate-closure-statement-list->state
   (lambda (program state cfuncsinstance)
     (cond
@@ -975,7 +977,7 @@
 
       ((eq? 'function (get-upcoming-statement-name arglist))
        (G-define-function->state (arglist-tail arglist) state cfuncsinstance))
-      
+
       ((eq? 'static-function (get-upcoming-statement-name arglist)) state)
 
       (else (error "Not a valid statement" arglist)))))
