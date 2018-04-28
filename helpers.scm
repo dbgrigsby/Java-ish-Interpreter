@@ -47,7 +47,7 @@
 
 ; Assign/Declare statement section
 (define get-var-name-from-declare-args cadr)
-(define truncate-var-name-from-declare cddr)
+(define truncate-var-name-from-declare caddr)
 (define get-declare-from-assign cddr)
 
 

@@ -324,21 +324,18 @@
       ((G-declared-in-stack-frame? (get-var-name-from-declare-args arglist) state)
        (error "variable already declared" (get-var-name-from-declare-args arglist) state))
       ((only-declare? arglist) (declare-var->state (get-var-name-from-declare-args arglist) state))
-      ((list? (car (truncate-var-name-from-declare arglist))) ; check to see if we are initializing an instance
-       (add-instance-to-state (get-var-name-from-declare-args arglist) (car (truncate-var-name-from-declare arglist)) state))
-       (else (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state cfuncsinstance)])
-         (initialize-var->state (get-var-name-from-declare-args arglist)
-                                (get-value-from-pair evaluate-assign)
-                                (get-state-from-pair evaluate-assign)))))))
+      (else (let* ([evaluate-assign (G-eval-atomic-statement->value_state (truncate-var-name-from-declare arglist) state cfuncsinstance)])
+              (initialize-var->state (get-var-name-from-declare-args arglist)
+                                     (get-value-from-pair evaluate-assign)
+                                     (get-state-from-pair evaluate-assign)))))))
 
 ; Adds an instance to the state. The value of the instance is '(type (instancestate))
 ; value is a list: e.g. (new A). Prereq: the name of the instance has not been declared in the current stack frame
-(define add-instance-to-state
-  (lambda (name value state)
+(define get-instance-initialization-value
+  (lambda (value state)
     (let* ([cn (cadr value)])
       (cond
-        (else (initialize-var->state name (list (list 'classname cn) (G-eval-class-closure->state cn state)) state))))))
-
+        (else (list (list 'classname cn) (G-eval-class-closure->state cn state)))))))
 
 ; Pushes the declaration statement to the state
 (define declare-var->state
@@ -376,11 +373,13 @@
   (lambda (arglist state cfuncsinstance)
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
-      ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
+      ;((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
       ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist)))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
+      ((is-initialization? arglist) ; arglist = (new classname). Value should be '((classname name) state), state should be original state
+       (list (get-instance-initialization-value arglist state) state))
       (else (error "not a valid atomic statement" arglist state)))))
 
 ; STUB
@@ -441,6 +440,10 @@
 (define is-funcall?
   (lambda (arglist)
     (eq? (arglist-head arglist) 'funcall)))
+
+(define is-initialization?
+  (lambda (arglist)
+    (eq? (arglist-head arglist) 'new)))
 
 ; Evaluates the function call
 (define eval-funcall->value_state
@@ -718,6 +721,9 @@
       ((not (G-declared? variable-name state)) #f)
       ((null? (variable-value-lookup variable-name state)) #f)
       (else #t))))
+
+
+
 
 
 
