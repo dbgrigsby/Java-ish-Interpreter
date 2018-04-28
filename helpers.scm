@@ -4,6 +4,20 @@
 #lang racket
 (provide (all-defined-out))
 
+; these class parsings are for debugging purposes
+;(define test-state (G-parsed-file-to-state->state '((class A () ((var x 100) (function add (x) ((return (+ (dot this x) x)))) (static-function main () ((var a (new A)) (return (funcall (dot a add) 25))))))
+             ;(class B (extends A) ((var x 20) (function add (x) ((return (+ (dot this x) x)))) (static-var a 50)))) initstate))
+;(define test-state2 (G-add-empty-scope-to-state->state test-state))
+
+; this state is for debugging purposes
+(define debug-state '((() ()) 
+  ((B A)
+   ((((var x 20) (function add (x) ((return (+ (dot this x) x)))) (static-var a 50)) (superclass A) ((a) (50)))
+    (((var x 100) (function add (x) ((return (+ (dot this x) x)))) (static-function main () ((var a (new A)) (return (funcall (dot a add) 25)))))
+     (superclass ())
+     ((main) ((() ((var a (new A)) (return (funcall (dot a add) 25)))))))))))
+
+
 ; Logic of the scoped-state structure
 (define initstate '( (() ()) ))
 (define nullreturn '())
