@@ -394,6 +394,15 @@
       (lookup valname (add-instance-to-state (get-instance-by-name 
         (instance-name arglist) state))))")))
 
+(define update-class-instance
+  (lambda (instancename new-instance-state state)
+    (G-push-state->state
+     instancename
+     (list (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))) new-instance-state)
+     state)))
+
+
+
 (define arglist-dot
   (lambda (arglist)
     (error "method stub: arglist-dot")))
@@ -916,6 +925,12 @@
       ((null? (get-variable-section-head (get-top-scope state))) #f)
       (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
 
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+
 (define G-eval-class-closure->state
   (lambda (classname state)
     (cond
@@ -1061,12 +1076,20 @@
 ; Gets a class's staticscope (the scope with static fields and functions)
 (define G-get-class-closure
   (lambda (classname state)
-    (car (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+    (car (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
 
 (define G-get-class-superclass
   (lambda (classname state)
-    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
+
+(define G-get-instance-classname
+  (lambda (instancename state)
+    (cadr (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))))))
+
+(define G-get-instance-state
+  (lambda (instancename state)
+    (cadr (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
 
 (define G-get-class-staticscope->staticscope
   (lambda (classname state)
-    (caddr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+    (caddr (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
