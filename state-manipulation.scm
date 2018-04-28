@@ -413,7 +413,7 @@
 
 
 ; Pushes a stack divider to a state
-(define G-push-stack-divider-to-state->state
+(define G-push-class-divider-to-state->state
   (lambda (state)
     (cons '((.cf) (0)) state)))
 
