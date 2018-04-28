@@ -408,14 +408,18 @@
     (error "method stub: arglist-dot")))
 
 
-(define G-pop-to-classes 
+(define G-pop-to-class-level 
   (lambda (state)
     (list (class-layer-from-state->state state))))
 
 
+; Pushes a stack divider to a state
+(define G-push-stack-divider-to-state->state
+  (lambda (state)
+    (cons '((.cf) (0)) state)))
 
 
-(define G-pop-to-this-divider->state
+(define G-pop-to-class-divider->state
   (lambda (state)
     (cond
       ((null? state) (error "No this divider found"))
@@ -423,11 +427,11 @@
       (else (G-pop-to-this-divider->state (get-tail-scope state))))))
 
 ; Determines if the top scope in a state is the stack divider
-(define is-top-scope-this-divider?
+(define is-top-scope-class-divider?
   (lambda (state)
     (cond
       ((null? (get-variable-section-head (get-top-scope state))) #f)
-      (else (eq? (get-scope-variable-head (get-top-scope state)) '.this)))))
+      (else (eq? (get-scope-variable-head (get-top-scope state)) '.cf)))))
 
 
 
