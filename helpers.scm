@@ -96,3 +96,7 @@
 
 (define get-funcall-args car)
 (define get-funcall-body cadr)
+
+
+; Class Helpers
+(define class-layer-from-state->state (lambda (state) (car (reverse state))))

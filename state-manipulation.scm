@@ -374,12 +374,67 @@
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
       ;((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
+      ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist)))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
       ((G-assign? arglist) (G-eval-assign->value_state arglist state cfuncsinstance))
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
       ((is-initialization? arglist) ; arglist = (new classname). Value should be '((classname name) state), state should be original state
        (list (get-instance-initialization-value arglist state) state))
       (else (error "not a valid atomic statement" arglist state)))))
+
+; STUB
+(define dot-expr? 
+  (lambda (arglist)
+    (error "method stub: dot-expr")))
+
+(define evaluate-dotted-expr->value_state
+  (lambda (arglist state cfuncsinstance)
+    (error "method stub: (value from right) (repair-state 
+      (lookup valname (add-instance-to-state (get-instance-by-name 
+        (instance-name arglist) state))))")))
+
+(define update-class-instance
+  (lambda (instancename new-instance-state state)
+    (G-push-state->state
+     instancename
+     (list (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))) new-instance-state)
+     state)))
+
+
+
+(define arglist-dot
+  (lambda (arglist)
+    (error "method stub: arglist-dot")))
+
+
+(define G-pop-to-class-level 
+  (lambda (state)
+    (list (class-layer-from-state->state state))))
+
+
+; Pushes a stack divider to a state
+(define G-push-stack-divider-to-state->state
+  (lambda (state)
+    (cons '((.cf) (0)) state)))
+
+
+(define G-pop-to-class-divider->state
+  (lambda (state)
+    (cond
+      ((null? state) (error "No this divider found"))
+      ((is-top-scope-this-divider? state) (get-tail-scope state))
+      (else (G-pop-to-this-divider->state (get-tail-scope state))))))
+
+; Determines if the top scope in a state is the stack divider
+(define is-top-scope-class-divider?
+  (lambda (state)
+    (cond
+      ((null? (get-variable-section-head (get-top-scope state))) #f)
+      (else (eq? (get-scope-variable-head (get-top-scope state)) '.cf)))))
+
+
+
+; FUNCALL Section
 
 ; eval function atomic statement section
 (define is-funcall?
@@ -880,6 +935,12 @@
       ((null? (get-variable-section-head (get-top-scope state))) #f)
       (else (eq? (get-scope-variable-head (get-top-scope state)) '.sf)))))
 
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------
+
 (define G-eval-class-closure->state
   (lambda (classname state)
     (cond
@@ -1025,12 +1086,20 @@
 ; Gets a class's staticscope (the scope with static fields and functions)
 (define G-get-class-closure
   (lambda (classname state)
-    (car (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+    (car (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
 
 (define G-get-class-superclass
   (lambda (classname state)
-    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
+
+(define G-get-instance-classname
+  (lambda (instancename state)
+    (cadr (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))))))
+
+(define G-get-instance-state
+  (lambda (instancename state)
+    (cadr (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
 
 (define G-get-class-staticscope->staticscope
   (lambda (classname state)
-    (caddr (get-value-from-pair (G-value-lookup->value_state classname state '())))))
+    (caddr (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
