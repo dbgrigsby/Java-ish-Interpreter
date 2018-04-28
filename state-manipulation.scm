@@ -407,6 +407,32 @@
   (lambda (arglist)
     (error "method stub: arglist-dot")))
 
+
+(define G-pop-to-classes 
+  (lambda (state)
+    (list (class-layer-from-state->state state))))
+
+
+
+
+(define G-pop-to-this-divider->state
+  (lambda (state)
+    (cond
+      ((null? state) (error "No this divider found"))
+      ((is-top-scope-this-divider? state) (get-tail-scope state))
+      (else (G-pop-to-this-divider->state (get-tail-scope state))))))
+
+; Determines if the top scope in a state is the stack divider
+(define is-top-scope-this-divider?
+  (lambda (state)
+    (cond
+      ((null? (get-variable-section-head (get-top-scope state))) #f)
+      (else (eq? (get-scope-variable-head (get-top-scope state)) '.this)))))
+
+
+
+; FUNCALL Section
+
 ; eval function atomic statement section
 (define is-funcall?
   (lambda (arglist)
