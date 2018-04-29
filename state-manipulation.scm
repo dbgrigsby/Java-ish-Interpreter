@@ -574,9 +574,9 @@
        (list evaled-value (G-merge-states->state state evaled-state))))
       (else
        (update-class-instance (dotted-class-instance dot-expression)
-                              (extract-new-class-instance-state
+                              (extract-new-class-instance-state (get-state-from-pair
                                (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (construct-dotted-state dot-expression state) cfuncsinstance)))
-                              state))))
+                              state)))))
 
 ;(trace evaluate-dotted-assign->value_state)
                   
