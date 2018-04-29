@@ -149,13 +149,13 @@
 
 (define eval-function-post-name-eval
   (lambda (name args state function-state superclass cfuncsinstance)
-    (let* ([function-in-state (variable-value-lookup name function-state)]
-           [popped-state (G-add-empty-scope-to-state->state
+    (let* ([popped-state (G-add-empty-scope-to-state->state
                           (G-push-stack-divider-to-state->state superclass
                            (G-pop-scope-to-function->state
                             name
                             superclass
                             function-state)))]
+           [function-in-state (variable-value-lookup name popped-state)]
            [evaluate-function-call
             (evaluate-parse-tree-with-cfuncs->retval_state
              (get-funcall-body function-in-state)
