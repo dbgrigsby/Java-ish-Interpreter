@@ -121,7 +121,9 @@
 (define G-eval-function->value_state
   (lambda (name args state cfuncsinstance)
     (cond
-      ((dot-expr? name)
+      ((and (dot-expr? name) (eq? (dotted-class-instance (arglist-dot name)) 'this))
+       (eval-function-post-name-eval (dotted-class-call (arglist-dot name)) args state state cfuncsinstance))
+      ((dot-expr? name) 
        (let* ([dottedname (arglist-dot name)]
               [evaled-function (eval-function-post-name-eval (evaluate-dotted-function-name dottedname state)
                                      args
