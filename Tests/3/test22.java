@@ -19,7 +19,7 @@ function fib(f) {
   return last;
 }
 
-function main() {
+static function main() {
   var y;
   var z = f(x = fib(3), y = fib(4));
   return z * 100 + y * 10 + x;

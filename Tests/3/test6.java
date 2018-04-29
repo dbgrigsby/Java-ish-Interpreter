@@ -13,7 +13,7 @@ function cmethod() {
   return bmethod() + a + b;
 }
 
-function main () {
+static function main () {
   var b = 5;
   return cmethod() + a + b;
 }

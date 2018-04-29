@@ -15,7 +15,7 @@ function f(x) {
   return g(x) + h(x);
 }
 
-function main() {
+static function main() {
   return f(10);
 }
 }

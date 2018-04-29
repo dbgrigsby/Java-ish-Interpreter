@@ -1,6 +1,6 @@
 class A {
 
-function main() {
+static function main() {
 var a = 31160;
 var b = 1476;
 var r = a % b;

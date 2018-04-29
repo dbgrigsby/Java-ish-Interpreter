@@ -7,7 +7,7 @@ function minmax(a, b, min) {
     return false;
 }
 
-function main() {
+static function main() {
   return (minmax(10, 100, true) && minmax(5, 3, false));
 }
 

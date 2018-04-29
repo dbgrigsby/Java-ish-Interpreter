@@ -14,7 +14,7 @@ function binom(a, b) {
   return val;
 }
 
-function main() {
+static function main() {
   return binom(6,3);
 }
 }
