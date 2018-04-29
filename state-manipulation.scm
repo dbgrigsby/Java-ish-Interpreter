@@ -1189,12 +1189,13 @@
 (define G-parsed-file-to-state->state
   (lambda (parsedFile state)
     (G-add-empty-scope-to-state->state (parse-file-to-state parsedFile state))))
+
 (define parse-file-to-state
   (lambda (parsedFile state)
     (cond
       ((null? parsedFile) state)
-      (else  (parse-file-to-state (cdr parsedFile)
-                                            (G-add-class-to-state->state (car parsedFile) state))))))
+      (else (parse-file-to-state (next-parsedfile parsedFile)
+                                 (G-add-class-to-state->state (get-top-parsedfile parsedFile) state))))))
 
 ; adds a (class, closure) to the state, as well as its contents
 ; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
@@ -1202,7 +1203,7 @@
   (lambda (class state)
     (cond
       ((null? class) (error "Class is empty"))
-      ((eq? (car class) 'class) (G-add-class-contents-to-state->state (cdr class) state))
+      ((eq? (get-top-class class) classname-parse) (G-add-class-contents-to-state->state (next-class class) state))
       (else state))))
 
 ; Adds a class's contents to the state. This first adds the classname, any exending classes, then calls a helper to add contetns
@@ -1211,9 +1212,9 @@
   (lambda (contents state)
     (cond
       ((null? contents) state)
-      (else (add-statics-to-state->state (caddr contents)
-                                         (push-superclass-to-state->state (cadr contents)
-                                                                          (push-classname-to-state->state (car contents) (caddr contents) state)))))))
+      (else (add-statics-to-state->state (get-class-closure-value contents)
+                                         (push-superclass-to-state->state (get-superclasscontents-from-contents contents)
+                                                                          (push-classname-to-state->state (get-classname-from-contents contents) (get-class-closure-value contents) state)))))))
 
 ; Pushes a (classname, name) to the value section of the most recent class in the top scope of the state
 ; closure = '((var x 5) (var b 3))
@@ -1248,15 +1249,16 @@
 (define push-superclass-to-scope->scope
   (lambda (supercontents scope)
     (cond
-      ((null? supercontents) (add-superclass-to-scope '() scope))
-      (else (add-superclass-to-scope (cadr supercontents) scope)))))
+      ((null? supercontents) (add-superclass-to-scope empty-supercontents-name scope))
+      (else (add-superclass-to-scope (get-supercontents-name supercontents) scope)))))
+
 
 (define add-superclass-to-scope
   (lambda (superclassname scope)
     (merge-scope-sections (get-variable-section-state scope)
                           (append (list (reverse (cons (list 'superclass superclassname)
-                                                       (reverse (car (get-value-section-state scope))))))
-                                  (cdr (get-value-section-state scope))))))
+                                                       (reverse (get-top-valuesection (get-value-section-state scope))))))
+                                  (get-rest-value-section (get-value-section-state scope))))))
 
 ; Adds static fields and methods to our state
 ; e.g. '((class A (extends B) ((static-var x 5))))
@@ -1264,7 +1266,7 @@
 ; For each element in the closure, push it to our state, then pop the top scope to get a scope
 (define add-statics-to-state->state
   (lambda (closure state)
-    (list (add-statics-to-scope->scope closure (car state) initstate))))
+    (list (add-statics-to-scope->scope closure (get-top-nestedstate-scope state) initstate))))
 
 ; For each element in the closure, push it to a state, then take the top scope, and append it to the classcope
 ; classcope is '((B A) ((contents1) (contents2)))
@@ -1273,14 +1275,15 @@
     (cond
       ((null? closure); merge nestedstate as an element to our class contents
        (merge-scope-sections (get-variable-section-state classcope)
-                             (append (list (reverse (cons (car nestedstate)
-                                                          (reverse (car (get-value-section-state classcope))))))
-                                     (cdr (get-value-section-state classcope)))))
-      ((eq? (caar closure) 'static-var)
-       (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (caddar closure) nestedstate)))
-      ((eq? (caar closure) 'static-function)
-       (add-statics-to-scope->scope (cdr closure) classcope (G-push-state->state (cadar closure) (cddar closure) nestedstate)))
-      (else (add-statics-to-scope->scope (cdr closure) classcope nestedstate)))))
+                             (append (list (reverse (cons (get-top-nestedstate-scope nestedstate)
+                                                          (reverse (get-top-valuesection (get-value-section-state classcope))))))
+                                     (get-rest-value-section (get-value-section-state classcope)))))
+      ((eq? (get-closure-name closure) 'static-var)
+       (add-statics-to-scope->scope (next-closure closure) classcope (G-push-state->state (get-closure-variable-contents closure)
+                                                                                          (get-closure-var-contents closure) nestedstate)))
+      ((eq? (get-closure-name closure) 'static-function)
+       (add-statics-to-scope->scope (next-closure closure) classcope (G-push-state->state (get-closure-variable-contents closure) (get-closure-function-contents closure) nestedstate)))
+      (else (add-statics-to-scope->scope (next-closure closure) classcope nestedstate)))))
 
 ; Helper functions for easy access/lookup to our state for class operations
 ; LOOKUP SECTION ----------------------------------------------------------
@@ -1288,20 +1291,21 @@
 ; Gets a class's staticscope (the scope with static fields and functions)
 (define G-get-class-closure
   (lambda (classname state)
-    (car (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
+    (get-closure-section (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
 
 (define G-get-class-superclass
   (lambda (classname state)
-    (cadadr (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
+    (get-superclass-classname-section (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
 
 (define G-get-instance-classname
   (lambda (instancename state)
-    (cadr (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))))))
+    (get-classname-section get-classname-section (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
 
 (define G-get-instance-state
   (lambda (instancename state)
-    (cadr (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
+    (get-instance-section (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
 
 (define G-get-class-staticscope->staticscope
   (lambda (classname state)
-    (caddr (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
+    (get-staticscope-section (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
+

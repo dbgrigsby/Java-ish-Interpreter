@@ -117,3 +117,30 @@
 
 (define dotted-class-instance car)
 (define dotted-class-call cadr)
+
+
+
+; Class parsing helper section
+(define get-staticscope-section caddr)
+(define get-instance-section cadr)
+(define get-classname-section cadar)
+(define get-superclass-classname-section cadadr)
+(define get-closure-section car)
+(define get-rest-value-section cdr)
+(define get-closure-name caar)
+(define next-closure cdr)
+(define get-closure-var-contents caddar)
+(define get-closure-function-contents cddar)
+(define get-closure-variable-contents cadar)
+(define get-top-nestedstate-scope car)
+(define get-top-valuesection car)
+(define get-supercontents-name cadr)
+(define empty-supercontents-name '())
+(define get-class-closure-value caddr)
+(define get-classname-from-contents car)
+(define get-superclasscontents-from-contents cadr)
+(define next-class cdr)
+(define get-top-class car)
+(define classname-parse 'class)
+(define next-parsedfile cdr)
+(define get-top-parsedfile car)
