@@ -134,6 +134,7 @@
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) state))))
          
       (else (eval-function-post-name-eval name args state state cfuncsinstance))))) 
+;(trace G-eval-function->value_state)
 
 (define eval-function-post-name-eval
   (lambda (name args state function-state cfuncsinstance)
@@ -155,17 +156,17 @@
                cfuncsinstance
                (lambda (s e) ((cfuncs-catch cfuncsinstance)
                               (G-merge-states->state
-                               state
+                               function-state
                                (G-pop-to-stack-divider->state s))
                               e)))))])
       (list
        (get-value-from-pair evaluate-function-call)
        (G-merge-states->state
-        state
+        function-state
         (G-pop-to-stack-divider->state
          (get-state-from-pair
           evaluate-function-call)))))))
-(trace eval-function-post-name-eval)
+;(trace eval-function-post-name-eval)
 (define evaluate-actual-args-for-state
   (lambda (actual state cfuncsinstance)
     (cond
@@ -204,21 +205,20 @@
 
 (define add-class-instance-to-state
  (lambda (instancename state)
-   (G-push-class-divider-to-state->state (G-get-instance-classname instancename state)
-                                         (append (G-get-instance-state instancename state)
-                                                 (G-pop-to-class-level->state state)))))
+   (append (G-get-instance-state instancename state)
+           (G-pop-to-class-level->state state))))
 
 (define extract-new-class-instance-state
   (lambda (state)
     (reverse (extract-new-class-instance-state-sub (get-tail-scope (reverse state))))))
-
+;(trace extract-new-class-instance-state)
 (define extract-new-class-instance-state-sub
  (lambda (state)
    (cond
-     ((null? state) (error "no class divider found"))
+     ((null? state) '())
      ((is-top-scope-class-divider? state) '())
      (else (cons (get-top-scope state) (extract-new-class-instance-state-sub (get-tail-scope state)))))))
-(trace extract-new-class-instance-state-sub)
+;(trace extract-new-class-instance-state-sub)
 (define update-class-instance
   (lambda (instancename new-instance-state state)
     (G-push-state->state
@@ -237,18 +237,11 @@
     (cons `((.cf) (,classname)) state)))
 
 
-(define G-pop-to-class-divider->state
-  (lambda (state)
-    (cond
-      ((null? state) (error "No this divider found"))
-      ((is-top-scope-class-divider? state) (get-tail-scope state))
-      (else (G-pop-to-class-divider->state (get-tail-scope state))))))
-
 (define get-valid-this-call-state
   (lambda (state)
     (cond
     ((G-state-has-stack-divider? state) (G-pop-to-stack-divider->state state))
-    (else (G-pop-to-class-divider->state state)))))
+    (else state))))
                                   
 ; Determines if the top scope in a state is the stack divider
 (define is-top-scope-class-divider?
@@ -573,7 +566,7 @@
       ((eq? (dotted-class-instance dot-expression) 'this)
        (let* ([evaled-assign (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (get-valid-this-call-state state) cfuncsinstance)]
               ; tail-scope is called to remove .cf pointer
-              [evaled-state (get-tail-scope (get-state-from-pair evaled-assign))]
+              [evaled-state (get-state-from-pair evaled-assign)]
               [evaled-value (get-value-from-pair evaled-assign)])
   
        (list evaled-value (G-merge-states->state state evaled-state))))
@@ -583,7 +576,7 @@
                                (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (construct-dotted-state dot-expression state) cfuncsinstance)))
                               state))))
 
-(trace evaluate-dotted-assign->value_state)
+;(trace evaluate-dotted-assign->value_state)
                   
 
 ; Determines whether or not an assignment argument is reached
@@ -973,7 +966,7 @@
 (define G-merge-states->state
   (lambda (origin-state mod-state)
       (reverse (merge (reverse origin-state) (reverse mod-state)))))
-
+;(trace G-merge-states->state)
 ; merges two reversed states
 (define merge
   (lambda (orig-state mod-state)
