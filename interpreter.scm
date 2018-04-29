@@ -17,6 +17,10 @@
       (with-handlers ([exn:fail? error->handler])
         (show-parse-tree-output (evaluate-parse-tree->retval_state (get-main-code classname staticstate)
                                                                    staticstate))))))
+(define debug-call
+  (lambda (filename classname)
+    (let* ([staticstate (G-parsed-file-to-state->state (parser filename) initstate)])
+    `(evaluate-parse-tree->retval_state ,(get-main-code classname staticstate) ,staticstate))))
 ; display the value from the parse tree output
 (define show-parse-tree-output
   (lambda (parse-tree-output)
@@ -56,4 +60,4 @@
 ; All errors, despite their text, return 'error for test purposes 
 (define error->handler
   (lambda (exception) ; It is correct to not delete the lambda to abstract this out. [exn:fail? error->handler] relies on this format.
-    `error))
+    'error))

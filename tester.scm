@@ -1,17 +1,32 @@
 #lang racket
 (require "interpreter.scm")
+(require "classParser.scm")
 ;(require (planet jowalsh/code-coverage))
 
 ; Tester
 
 ; General testing framework
 (define test
-  (lambda (filename classname expected-output)
-    (if (eq? (interpret filename classname) expected-output)
+  (lambda (filename expected-output)
+    (if (eq? (interpret filename (findmain (parser filename))) expected-output)
         (string-append "Passed " filename)
         (string-append "Failed " filename
           ", ! Expected output: " (if (number? expected-output) (number->string expected-output) (symbol->string expected-output))
-            ", Interpreter output: "  (if (number? (interpret filename classname)) (number->string (interpret filename classname)) (symbol->string  (interpret filename classname)))))))
+            ", Interpreter output: "  (if (number? (interpret filename (findmain (parser filename)))) (number->string (interpret filename (findmain (parser filename)))) (symbol->string
+                                                                                                                (interpret filename (findmain (parser filename)))))))))
+
+(define member*
+  (lambda (x lis)
+    (cond
+      ((null? lis) #f)
+      ((not (list? lis)) (equal? x lis))
+      (else (or (member* x (car lis)) (member* x (cdr lis)))))))
+(define findmain
+  (lambda (parse-tree)
+    (cond
+      ((null? parse-tree) (error "could not find main"))
+      ((member* 'main (car parse-tree)) (cadr (car parse-tree)))
+      (else (findmain (cdr parse-tree))))))
 
 ; Tests 1
 ;(newline)(newline)
