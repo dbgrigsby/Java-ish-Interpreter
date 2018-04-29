@@ -6,7 +6,7 @@ function divide(x, y) {
   return x / y;
 }
 
-function main() {
+static function main() {
   var x = 0;
   try {
    if(true){

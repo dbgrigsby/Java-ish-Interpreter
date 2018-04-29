@@ -9,7 +9,7 @@ function fact(n) {
   return r;
 }
 
-function main() {
+static function main() {
   return fact(fact(3) - fact(2));
 }
 

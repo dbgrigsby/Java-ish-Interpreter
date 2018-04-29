@@ -1,6 +1,6 @@
 class A {
 
-function main() {
+static function main() {
   function h() {
     return 10;
   }

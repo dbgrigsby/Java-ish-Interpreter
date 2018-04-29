@@ -14,7 +14,7 @@ function gcd(a, &b) {
   }
   return b;
 }
-function main () {
+static function main () {
   var x = 14;
   var y = 3 * x - 7;
   gcd(x,y);

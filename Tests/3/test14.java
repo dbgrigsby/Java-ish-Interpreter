@@ -24,7 +24,7 @@ function collatz(n) {
 }
 
 
-function main() {
+static function main() {
   return collatz(111);
 }
 

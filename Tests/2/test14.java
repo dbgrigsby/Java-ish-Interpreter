@@ -1,6 +1,6 @@
 class A {
 
-function main() {
+static function main() {
 var x = 1;
 while (true) {
   x = x + 1;

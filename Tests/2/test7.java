@@ -1,6 +1,6 @@
 class A {
 
-function main() {
+static function main() {
 var x = 0;
 var result = 0;
 

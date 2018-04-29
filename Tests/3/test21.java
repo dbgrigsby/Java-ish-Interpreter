@@ -12,7 +12,7 @@ function swap2(&x, &y) {
   y = temp;
 }
 
-function main() {
+static function main() {
   var a = 1;
   var b = 2;
   swap1(a,b);

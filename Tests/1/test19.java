@@ -1,6 +1,6 @@
 class A {
 
-function main() {
+static function main() {
 var x = 2;
 while (x < 100)
   x = x * 2;
