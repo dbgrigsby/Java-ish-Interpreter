@@ -38,7 +38,6 @@
          (else (list '() (evaluate-statement-list->state program state
                                                          (cfuncs-update-return cfuncsinstance return)))))))))
 
-;(trace evaluate-parse-tree-with-cfuncs->retval_state)
 
 
 (define evaluate-statement-list->state
@@ -164,7 +163,7 @@
     (cond
       ((G-initialized? '.this state) (get-value-from-pair (G-value-lookup->value_state '.this state cfuncsinstance)))
       (else (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))))
-
+(trace get-current-class)
 (define get-super-class
   (lambda (currentclass state)
     (cond
@@ -301,8 +300,8 @@
 (define get-valid-this-call-state
   (lambda (state)
     (cond
-    ((G-state-has-stack-divider? state) (G-pop-to-stack-divider->state state))
-    (else state))))
+      ((G-state-has-stack-divider? state) (G-pop-to-stack-divider->state state))
+      (else state))))
                                   
 ; Determines if the top scope in a state is the stack divider
 (define is-top-scope-class-divider?
@@ -517,6 +516,8 @@
   (lambda (arglist state cfuncsinstance)
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
+      ((single-this? arglist) (handle-this-expr state))
+      ((single-super? arglist) (error "Not implemented"))
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
       ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist) state cfuncsinstance))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
@@ -525,8 +526,18 @@
       ((is-initialization? arglist) ; arglist = (new classname). Value should be '((classname name) state), state should be original state
        (list (get-instance-initialization-value arglist state) state))
       (else (error "not a valid atomic statement" arglist state)))))
+(define single-super?
+  (lambda (arglist)
+    (equal? arglist '(this))))
+(define single-this?
+  (lambda (arglist)
+    (equal? arglist '(this))))
 
-
+(define handle-this-expr
+  (lambda (state)
+    (list (extract-new-class-instance-state state) state)))
+(trace handle-this-expr)
+;(trace G-eval-atomic-statement->value_state)
 ; STUB
 (define dot-expr?
   (lambda (arglist)
