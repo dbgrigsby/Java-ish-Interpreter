@@ -25,6 +25,7 @@
   (lambda (program state)
     (evaluate-parse-tree-with-cfuncs->retval_state program state empty-cfuncs)))
 
+
 (define evaluate-parse-tree-with-cfuncs->retval_state
   (lambda (program state cfuncsinstance)
     (call/cc
@@ -37,7 +38,7 @@
          (else (list '() (evaluate-statement-list->state program state
                                                          (cfuncs-update-return cfuncsinstance return)))))))))
 
-;(trace evaluate-parse-tree->retval_state)
+;(trace evaluate-parse-tree-with-cfuncs->retval_state)
 
 
 (define evaluate-statement-list->state
@@ -122,13 +123,23 @@
   (lambda (name args state cfuncsinstance)
     (cond
       ((and (dot-expr? name) (eq? (dotted-class-instance (arglist-dot name)) 'this))
-       (eval-function-post-name-eval (dotted-class-call (arglist-dot name)) args state state default-superclass cfuncsinstance))
+       (let* ([evaled-function (eval-function-post-name-eval (dotted-class-call (arglist-dot name))
+                                                             args
+                                                             state
+                                                             state
+                                                             (get-base-class state cfuncsinstance)
+                                                             #t
+                                                             cfuncsinstance)]
+              [function-return (get-value-from-pair evaled-function)]
+              [function-state (get-state-from-pair evaled-function)])
+       (list function-return function-state)))
       ((and (dot-expr? name) (eq? (dotted-class-instance (arglist-dot name)) 'super))
        (eval-function-post-name-eval (dotted-class-call (arglist-dot name))
                                      args
                                      state
                                      state
-                                     (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))
+                                     (get-current-class state cfuncsinstance)
+                                     #f
                                      cfuncsinstance))
       ((dot-expr? name) 
        (let* ([dottedname (arglist-dot name)]
@@ -136,26 +147,63 @@
                                      args
                                      state
                                      (construct-dotted-state dottedname state)
-                                     default-superclass
+                                     (get-current-class (construct-dotted-state dottedname state) cfuncsinstance)
+                                     #t
                                      cfuncsinstance)]
               [function-return (get-value-from-pair evaled-function)]
               [function-state (get-state-from-pair evaled-function)])
-         ;possible error, extract should be called on function state
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) state))))
          
-      (else (eval-function-post-name-eval name args state state default-superclass cfuncsinstance))))) 
+      (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance))))) 
 ;(trace G-eval-function->value_state)
-(define default-superclass '())
+(define get-base-class
+  (lambda (state cfuncsinstance)
+    (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))
+(define get-current-class
+  (lambda (state cfuncsinstance)
+    (cond
+      ((G-initialized? '.this state) (get-value-from-pair (G-value-lookup->value_state '.this state cfuncsinstance)))
+      (else (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))))
+
+(define get-super-class
+  (lambda (currentclass state)
+    (cond
+      ((null? state) '())
+      ((null? currentclass) default-currentclass)
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
+       (cond
+         ((and (eq? (car (get-value-section-state (get-top-scope state))) currentclass)
+               (G-initialized? '.class (get-tail-scope state)))
+          (get-value-from-pair (G-value-lookup->value_state '.class (get-tail-scope state) empty-cfuncs)))
+         (else (get-super-class currentclass (get-tail-scope state)))))
+      (else (get-super-class currentclass (get-tail-scope state))))))
+
+
+(define default-currentclass '())
 
 (define eval-function-post-name-eval
-  (lambda (name args state function-state superclass cfuncsinstance)
-    (let* ([popped-state (G-add-empty-scope-to-state->state
-                          (G-push-stack-divider-to-state->state superclass
-                           (G-pop-scope-to-function->state
-                            name
-                            superclass
-                            function-state)))]
-           [function-in-state (variable-value-lookup name popped-state)]
+  (lambda (name args state function-state current-class preserve-current-class cfuncsinstance)
+    (let* ([super-popped-state (G-add-empty-scope-to-state->state
+                                (G-push-stack-divider-to-state->state current-class
+                                                                      (G-pop-scope-to-function->state
+                                                                       name
+                                                                       (if preserve-current-class
+                                                                           current-class
+                                                                           (get-super-class current-class state))
+                                                                       function-state)))]
+           [popped-state 
+            (push-variable-as-literal->state '.this
+                                             (if preserve-current-class
+                                                 current-class
+                                                 (get-value-from-pair (G-value-lookup->value_state '.class super-popped-state cfuncsinstance)))
+                                             (G-add-empty-scope-to-state->state
+                                              (G-push-stack-divider-to-state->state current-class
+                                                                                    (G-pop-scope-to-function-or-class->state
+                                                                                     name
+                                                                                     current-class
+                                                                                     function-state))))]
+           
+           [function-in-state (variable-value-lookup name super-popped-state)]
            [evaluate-function-call
             (evaluate-parse-tree-with-cfuncs->retval_state
              (get-funcall-body function-in-state)
@@ -178,6 +226,7 @@
         (G-pop-to-stack-divider->state
          (get-state-from-pair
           evaluate-function-call)))))))
+
 ;(trace eval-function-post-name-eval)
 (define evaluate-actual-args-for-state
   (lambda (actual state cfuncsinstance)
@@ -223,14 +272,14 @@
 (define extract-new-class-instance-state
   (lambda (state)
     (reverse (extract-new-class-instance-state-sub (get-tail-scope (reverse state))))))
-;(trace extract-new-class-instance-state)
+
 (define extract-new-class-instance-state-sub
  (lambda (state)
    (cond
      ((null? state) '())
      ((is-top-scope-class-divider? state) '())
      (else (cons (get-top-scope state) (extract-new-class-instance-state-sub (get-tail-scope state)))))))
-;(trace extract-new-class-instance-state-sub)
+
 (define update-class-instance
   (lambda (instancename new-instance-state state)
     (G-push-state->state
@@ -477,7 +526,7 @@
        (list (get-instance-initialization-value arglist state) state))
       (else (error "not a valid atomic statement" arglist state)))))
 
-;(trace G-eval-atomic-statement->value_state)
+
 ; STUB
 (define dot-expr?
   (lambda (arglist)
@@ -576,7 +625,7 @@
                                                            (get-value-from-pair evaluate-assign)
                                                            (get-state-from-pair evaluate-assign)) cfuncsinstance))
         (else (error "variable undeclared args:" arglist "state" state))))))
-;(trace G-eval-assign->value_state)
+
 (define evaluate-dotted-assign->value_state
   (lambda (dot-expression assign-value state cfuncsinstance)
     (cond
@@ -600,7 +649,7 @@
                                (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (construct-dotted-state dot-expression state) cfuncsinstance)))
                               state)))))
 
-;(trace evaluate-dotted-assign->value_state)
+
                   
 
 ; Determines whether or not an assignment argument is reached
@@ -800,7 +849,7 @@
       ((state-empty? state) #f)
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) variable-name) #t)
       (else (G-declared? variable-name (get-tail-scope state))))))
-;(trace G-declared?)
+
 ; Determines if a variable was declared in a scope
 (define G-declared-in-stack-frame?
   (lambda (variable-name state)
@@ -978,16 +1027,30 @@
     (G-type-lookup (variable-value-lookup variable state) state cfuncsinstance)))
 
 ; Pops scopes off of the state until the head scope contains a function
-(define G-pop-scope-to-function->state
-  (lambda (fn superclass state)
+;pops to the scope after the currentclass
+(define G-pop-scope-to-function-or-class->state
+  (lambda (fn desiredclass state)
     (cond
       ((null? state) (error "function was not found in state"))
-      ((null? superclass) (pop-scope-to-function-default fn state))
+      ((null? desiredclass) (pop-scope-to-function-default fn state))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
        (cond
-         ((eq? (car (get-value-section-state (get-top-scope state))) superclass) (pop-scope-to-function-default fn (get-tail-scope state)))
-         (else (G-pop-scope-to-function->state fn superclass (get-tail-scope state)))))
-      (else (G-pop-scope-to-function->state fn superclass (get-tail-scope state))))))
+         ((eq? (car (get-value-section-state (get-top-scope state))) desiredclass) state)
+         (else (G-pop-scope-to-function-or-class->state fn desiredclass (get-tail-scope state)))))
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
+      (else (G-pop-scope-to-function-or-class->state fn desiredclass (get-tail-scope state))))))
+
+(define G-pop-scope-to-function->state
+  (lambda (fn desiredclass state)
+    (cond
+      ((null? state) (error "function was not found in state"))
+      ((null? desiredclass) (pop-scope-to-function-default fn state))
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
+       (cond
+         ((eq? (car (get-value-section-state (get-top-scope state))) desiredclass) (pop-scope-to-function-default fn state))
+         (else (G-pop-scope-to-function->state fn desiredclass (get-tail-scope state)))))
+      ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
+      (else (G-pop-scope-to-function->state fn desiredclass (get-tail-scope state))))))
 
 (define pop-scope-to-function-default
   (lambda (fn state)
@@ -995,13 +1058,24 @@
       ((null? state) (error "function was not found in state"))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
       (else (pop-scope-to-function-default fn (get-tail-scope state))))))
-;(trace G-pop-scope-to-function->state)
+
+
+(define G-shortmerge-states->state
+  (lambda (origin-state mod-state)
+      (reverse (shortmerge (reverse origin-state) (reverse mod-state)))))
+
+(define shortmerge
+  (lambda (orig-state mod-state)
+    (cond
+      ((null? orig-state) '())
+      (else (cons (get-top-scope mod-state)
+                  (shortmerge (get-tail-scope orig-state)(get-tail-scope mod-state)))))))
 ; Merges an original state with the state after a funciton call,
 ; assumes that the function call state has smaller airty than the original state
 (define G-merge-states->state
   (lambda (origin-state mod-state)
       (reverse (merge (reverse origin-state) (reverse mod-state)))))
-;(trace G-merge-states->state)
+
 ; merges two reversed states
 (define merge
   (lambda (orig-state mod-state)
@@ -1069,7 +1143,7 @@
       ((null? (G-get-class-superclass classname state)) (evaluate-closure->state classname state))
       (else (cons (get-top-scope
                    (evaluate-closure->state classname state)) (G-eval-class-closure->state (G-get-class-superclass classname state) state))))))
-;(trace G-eval-class-closure->state)
+
 (define evaluate-closure->state
   (lambda (classname state)
     (push-variable-as-literal->state '.class
