@@ -163,7 +163,7 @@
     (cond
       ((G-initialized? '.this state) (get-value-from-pair (G-value-lookup->value_state '.this state cfuncsinstance)))
       (else (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))))
-(trace get-current-class)
+;(trace get-current-class)
 (define get-super-class
   (lambda (currentclass state)
     (cond
@@ -194,7 +194,7 @@
             (push-variable-as-literal->state '.this
                                              (if preserve-current-class
                                                  current-class
-                                                 (get-value-from-pair (G-value-lookup->value_state '.class super-popped-state cfuncsinstance)))
+                                                 (get-super-class current-class state))
                                              (G-add-empty-scope-to-state->state
                                               (G-push-stack-divider-to-state->state current-class
                                                                                     (G-pop-scope-to-function-or-class->state
@@ -536,8 +536,7 @@
 (define handle-this-expr
   (lambda (state)
     (list (extract-new-class-instance-state state) state)))
-(trace handle-this-expr)
-;(trace G-eval-atomic-statement->value_state)
+
 ; STUB
 (define dot-expr?
   (lambda (arglist)
