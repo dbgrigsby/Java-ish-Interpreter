@@ -153,12 +153,12 @@
                                      cfuncsinstance)]
 
               ; TODO: left off on line below
-              ;[evaled-instance (list `(classname ,(get-base-class (get-value-from-pair evaled-instance-pair)))
-              ;                                                   (get-value-from-pair evaled-instance-pair))]
+              ;[evaled-instance (list '(classname Test) (get-instance-state (get-value-from-pair evaled-instance-pair)))]
               [evaled-instance (get-value-from-pair evaled-instance-pair)]
+              ;[debug (debug-func? list? evaled-instance evaled-instance-pair state name)]
               [evaled-state (push-variable-as-literal->state '.temp evaled-instance (get-state-from-pair evaled-instance-pair))]
               [dottedname (list '.temp (dotted-class-call (arglist-dot name)))]
-              [evaled-function (eval-function-post-name-eval (evaluate-dotted-function-name dottedname evaled-state)
+              [evaled-function (eval-function-post-name-eval (dotted-class-call dottedname)
                                      args
                                      evaled-state
                                      (construct-dotted-state dottedname evaled-state)
@@ -170,7 +170,7 @@
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))
       ((dot-expr? name) 
        (let* ([dottedname (arglist-dot name)]
-              [evaled-function (eval-function-post-name-eval (evaluate-dotted-function-name dottedname state)
+              [evaled-function (eval-function-post-name-eval (dotted-class-call dottedname)
                                      args
                                      state
                                      (construct-dotted-state dottedname state)
@@ -182,7 +182,6 @@
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) state))))
       (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance)))))
 
-(trace G-eval-function->value_state)
 (define get-base-class
   (lambda (state cfuncsinstance)
     (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))
@@ -191,7 +190,7 @@
     (cond
       ((G-initialized? '.this state) (get-value-from-pair (G-value-lookup->value_state '.this state cfuncsinstance)))
       (else (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))))
-;(trace get-current-class)
+
 (define get-super-class
   (lambda (currentclass state)
     (cond
@@ -252,8 +251,11 @@
         function-state
         (G-pop-to-stack-divider->state
          (get-state-from-pair
-          evaluate-function-call)))))))
-
+          (delete-this
+          evaluate-function-call))))))))
+(define delete-this
+  (lambda (arg) arg))
+;(trace delete-this)
 ;(trace eval-function-post-name-eval)
 (define evaluate-actual-args-for-state
   (lambda (actual state cfuncsinstance)
@@ -295,7 +297,8 @@
  (lambda (instancename state)
    (append (G-get-instance-state instancename state)
            (G-pop-to-class-level->state state))))
-(trace add-class-instance-to-state)
+;(trace add-class-instance-to-state)
+
 (define extract-new-class-instance-state
   (lambda (state)
     (reverse (extract-new-class-instance-state-sub (get-tail-scope (reverse state))))))
@@ -545,8 +548,6 @@
   (lambda (arglist state cfuncsinstance)
     (cond
       ((single-atom? arglist) (G-value-lookup->value_state arglist state cfuncsinstance))
-      ((single-this? arglist) (handle-this-expr state))
-      ((single-super? arglist) (error "Not implemented"))
       ((single-value-list? arglist) (G-value-lookup->value_state (arglist-head arglist) state cfuncsinstance))
       ((dot-expr? arglist) (evaluate-dotted-expr->value_state (arglist-dot arglist) state cfuncsinstance))
       ((G-expr? arglist) (G-eval-expr->value_state arglist state cfuncsinstance))
@@ -554,18 +555,13 @@
       ((is-funcall? arglist) (eval-funcall->value_state (arglist-tail arglist) state cfuncsinstance))
       ((is-initialization? arglist) ; arglist = (new classname). Value should be '((classname name) state), state should be original state
        (list (get-instance-initialization-value arglist state) state))
+      ((raw-class-instance arglist) (list arglist state))
       (else (error "not a valid atomic statement" arglist state)))))
-(define single-super?
-  (lambda (arglist)
-    (equal? arglist '(this))))
-(define single-this?
-  (lambda (arglist)
-    (equal? arglist '(this))))
 
-(define handle-this-expr
-  (lambda (state)
-    (list (extract-new-class-instance-state state) state)))
-(trace handle-this-expr)
+(define raw-class-instance
+  (lambda (arglist)
+    (eq? (get-value-from-pair (get-value-from-pair arglist)) 'classname)))
+
 (define dot-expr?
   (lambda (arglist)
     (cond
@@ -856,11 +852,25 @@
     (cond
       ; if its an expression, evaluate to get value
       ((list? value) (G-eval-atomic-statement->value_state value state cfuncsinstance))
+      ((this-expr? value) (handle-this-expr state))
+      ((super-expr? value) (error "not implemented"))
       ((integer? value) (cons value (list state)))
       ((boolean? value) (cons value (list state)))
       ((java-boolean? value) (cons (lookup-java-boolean value) (list state)))
       ((G-initialized? value state) (cons (variable-value-lookup value state) (list state)))
       (else (error "unsupported value lookup" value "state" state)))))
+
+(define super-expr?
+  (lambda (arglist)
+    (equal? arglist 'super)))
+
+(define this-expr?
+  (lambda (arglist)
+    (equal? arglist 'this)))
+
+(define handle-this-expr
+  (lambda (state)
+    (list (list `(classname ,(get-base-class state empty-cfuncs)) (G-pop-to-stack-divider->state (extract-new-class-instance-state state))) state)))
 
 ; Determines whether a boolean in java boolean notation was encountered
 (define java-boolean?
@@ -1113,7 +1123,6 @@
 (define G-merge-states->state
   (lambda (origin-state mod-state)
       (reverse (merge (reverse origin-state) (reverse mod-state)))))
-
 ; merges two reversed states
 (define merge
   (lambda (orig-state mod-state)

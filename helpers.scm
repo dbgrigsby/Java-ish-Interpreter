@@ -144,3 +144,17 @@
 (define classname-parse 'class)
 (define next-parsedfile cdr)
 (define get-top-parsedfile car)
+(define get-instance-state cadr)
+(define atom?
+  (lambda (v)
+    (not (list? v))))
+(define (debug-func? func . args)
+  (cond
+    ((func (car args))
+     (error "debug equal" args))
+    (else (cadr args))))
+(define (debug-eq? . args)
+  (cond
+    ((equal? (car args) (cadr args))
+     (error "debug equal" args))
+    (else (cadr args))))
