@@ -1257,11 +1257,12 @@
 ;------------------------------------------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------------------------
 
-; Parses a parsed file into our state (which initially is our initstate)
+; Converts a parsed file into our state, and adds a new scope to the front once conversion is complete
 (define G-parsed-file-to-state->state
   (lambda (parsedFile state)
     (G-add-empty-scope-to-state->state (parse-file-to-state parsedFile state))))
 
+; Converts a parsed file into a state
 (define parse-file-to-state
   (lambda (parsedFile state)
     (cond
@@ -1269,7 +1270,7 @@
       (else (parse-file-to-state (next-parsedfile parsedFile)
                                  (G-add-class-to-state->state (get-top-parsedfile parsedFile) state))))))
 
-; adds a (class, closure) to the state, as well as its contents
+; Adds a (class, closure) to the state, as well as its contents
 ; The contents are: (classname, name), (super, classname), (staticField, value), (staticFunction, value)
 (define G-add-class-to-state->state
   (lambda (class state)
@@ -1286,7 +1287,9 @@
       ((null? contents) state)
       (else (add-statics-to-state->state (get-class-closure-value contents)
                                          (push-superclass-to-state->state (get-superclasscontents-from-contents contents)
-                                                                          (push-classname-to-state->state (get-classname-from-contents contents) (get-class-closure-value contents) state)))))))
+                                                                          (push-classname-to-state->state (get-classname-from-contents contents)
+                                                                                                          (get-class-closure-value contents)
+                                                                                                          state)))))))
 
 ; Pushes a (classname, name) to the value section of the most recent class in the top scope of the state
 ; closure = '((var x 5) (var b 3))
@@ -1296,35 +1299,40 @@
       ((null? classname) (error "No classname"))
       (else (list (push-classname-to-scope->scope classname closure (get-top-scope state)))))))
 
-; helper for push-classname-to-state-state, returns a classname pushed to the first scope's class
+; Helper for push-classname-to-state-state, returns a classname pushed to the first scope's class
 (define push-classname-to-scope->scope
   (lambda (name closure scope)
     (merge-scope-sections (add-name-to-scope name scope)
                           (add-closure-to-scope closure scope))))
 
+; Merges a variable and value section of a scope together into a scope
 (define merge-scope-sections
   (lambda (variables values)
     (list variables values)))
 
+; Adds a name (classname) to a scope
 (define add-name-to-scope
   (lambda (name scope)
     (cons name (get-variable-section-state scope))))
 
+; Adds a closure to a scope
 (define add-closure-to-scope
   (lambda (closure scope)
     (cons (list closure) (get-value-section-state scope))))
 
+; Pushes a superclass to a state
 (define push-superclass-to-state->state
   (lambda (supercontents state)
     (list (push-superclass-to-scope->scope supercontents (get-top-scope state)))))
 
+; Adds a superclass to a scope when given supercontents, which contain a classname or null for no superclass
 (define push-superclass-to-scope->scope
   (lambda (supercontents scope)
     (cond
       ((null? supercontents) (add-superclass-to-scope empty-supercontents-name scope))
       (else (add-superclass-to-scope (get-supercontents-name supercontents) scope)))))
 
-
+; Adds and creates a superclass list: '(superclass classname) to a staticscope
 (define add-superclass-to-scope
   (lambda (superclassname scope)
     (merge-scope-sections (get-variable-section-state scope)
@@ -1352,32 +1360,37 @@
                                      (get-rest-value-section (get-value-section-state classcope)))))
       ((eq? (get-closure-name closure) 'static-var)
        (add-statics-to-scope->scope (next-closure closure) classcope (G-push-state->state (get-closure-variable-contents closure)
-                                                                                          (get-closure-var-contents closure) nestedstate)))
+                                                                                          (get-closure-var-contents closure)
+                                                                                          nestedstate)))
       ((eq? (get-closure-name closure) 'static-function)
-       (add-statics-to-scope->scope (next-closure closure) classcope (G-push-state->state (get-closure-variable-contents closure) (get-closure-function-contents closure) nestedstate)))
+       (add-statics-to-scope->scope (next-closure closure) classcope (G-push-state->state (get-closure-variable-contents closure)
+                                                                                          (get-closure-function-contents closure)
+                                                                                          nestedstate)))
       (else (add-statics-to-scope->scope (next-closure closure) classcope nestedstate)))))
 
 ; Helper functions for easy access/lookup to our state for class operations
 ; LOOKUP SECTION ----------------------------------------------------------
-
 ; Gets a class's staticscope (the scope with static fields and functions)
 (define G-get-class-closure
   (lambda (classname state)
     (get-closure-section (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
 
+; Get the superclass classname of a class
 (define G-get-class-superclass
   (lambda (classname state)
     (get-superclass-classname-section (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
 
+; Get the classname of an instance
 (define G-get-instance-classname
   (lambda (instancename state)
     (get-classname-section get-classname-section (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
 
+; Get an instancestate of an instance
 (define G-get-instance-state
   (lambda (instancename state)
     (get-instance-section (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))))
 
+; Get a class's staticscope given a classname
 (define G-get-class-staticscope->staticscope
   (lambda (classname state)
     (get-staticscope-section (get-value-from-pair (G-value-lookup->value_state classname state empty-cfuncs)))))
-
