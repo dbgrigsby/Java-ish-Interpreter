@@ -140,6 +140,34 @@
                                      (get-current-class state cfuncsinstance)
                                      #f
                                      cfuncsinstance))
+
+      ; single case: funcall (funcall (dot obj X))
+      ; non-single case:     (funcall (dot (funcall (dot obj X)) Y))
+      
+      ; dotted-class-instance: 'a (the name of the instance
+      ; dottedname: (a f) where f is the name of the call and a is the object
+      ((and (dot-expr? name) (list? (dotted-class-instance (arglist-dot name))))
+       (let* ([evaled-instance-pair (G-eval-atomic-statement->value_state
+                                     (dotted-class-instance (arglist-dot name))
+                                     state
+                                     cfuncsinstance)]
+
+              ; TODO: left off on line below
+              ;[evaled-instance (list `(classname ,(get-base-class (get-value-from-pair evaled-instance-pair)))
+              ;                                                   (get-value-from-pair evaled-instance-pair))]
+              [evaled-instance (get-value-from-pair evaled-instance-pair)]
+              [evaled-state (push-variable-as-literal->state '.temp evaled-instance (get-state-from-pair evaled-instance-pair))]
+              [dottedname (list '.temp (dotted-class-call (arglist-dot name)))]
+              [evaled-function (eval-function-post-name-eval (evaluate-dotted-function-name dottedname evaled-state)
+                                     args
+                                     evaled-state
+                                     (construct-dotted-state dottedname evaled-state)
+                                     (get-current-class (construct-dotted-state dottedname evaled-state) cfuncsinstance)
+                                     #t
+                                     cfuncsinstance)]
+              [function-return (get-value-from-pair evaled-function)]
+              [function-state (get-state-from-pair evaled-function)])
+         (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))
       ((dot-expr? name) 
        (let* ([dottedname (arglist-dot name)]
               [evaled-function (eval-function-post-name-eval (evaluate-dotted-function-name dottedname state)
@@ -152,9 +180,9 @@
               [function-return (get-value-from-pair evaled-function)]
               [function-state (get-state-from-pair evaled-function)])
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) state))))
-         
-      (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance))))) 
-;(trace G-eval-function->value_state)
+      (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance)))))
+
+(trace G-eval-function->value_state)
 (define get-base-class
   (lambda (state cfuncsinstance)
     (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))
@@ -267,7 +295,7 @@
  (lambda (instancename state)
    (append (G-get-instance-state instancename state)
            (G-pop-to-class-level->state state))))
-
+(trace add-class-instance-to-state)
 (define extract-new-class-instance-state
   (lambda (state)
     (reverse (extract-new-class-instance-state-sub (get-tail-scope (reverse state))))))
@@ -480,6 +508,7 @@
       (cond
         (else (list (list 'classname cn) (G-eval-class-closure->state cn state)))))))
 
+
 ; Pushes the declaration statement to the state
 (define declare-var->state
   (lambda (name state)
@@ -536,8 +565,7 @@
 (define handle-this-expr
   (lambda (state)
     (list (extract-new-class-instance-state state) state)))
-
-; STUB
+(trace handle-this-expr)
 (define dot-expr?
   (lambda (arglist)
     (cond
