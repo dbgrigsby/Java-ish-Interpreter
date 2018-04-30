@@ -1,8 +1,20 @@
 class A {
-  var x = 100;
+  var a = 0;
 
-  static function main() {
-    return 4;
+  function X() {
+     a = a + 1;
+     return this;
   }
 
+  function Y() {
+     a = a + 1;
+     return this;
+  }
+
+  static function main() {
+    var obj = new A();
+    obj.X().Y();
+
+    return obj.a;
+  }
 }
