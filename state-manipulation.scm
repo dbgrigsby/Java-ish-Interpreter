@@ -332,16 +332,22 @@
      ((is-top-scope-class-divider? state) '())
      (else (cons (get-top-scope state) (extract-new-class-instance-state-sub (get-tail-scope state)))))))
 
+; Updates a class instance with a new instance state
 (define update-class-instance
   (lambda (instancename new-instance-state state)
-    (G-push-state->state
-     instancename
-     (list (car (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs))) new-instance-state)
-     state)))
+    (G-push-state->state instancename
+                         (list (get-instance-value-front (get-value-from-pair (G-value-lookup->value_state instancename state empty-cfuncs)))
+                               new-instance-state)
+                         state)))
 
+(define get-instance-value-front car)
+
+; Pops a state to the class level
 (define G-pop-to-class-level->state
   (lambda (state)
-    (list (car (reverse state)))))
+    (list (get-reversedstate-head (reverse state)))))
+
+(define get-reversedstate-head car)
 
 
 ; Pushes a stack divider to a state
@@ -350,6 +356,7 @@
     (cons `((.cf) (,classname)) state)))
 
 
+; Gets a valid state for a 'this' keyword call
 (define get-valid-this-call-state
   (lambda (state)
     (cond
@@ -383,28 +390,23 @@
       (cond
         ; If the if condition is true, evaluate the statements inside of it.
         ((get-value-from-pair eval-ifcond)
-
-         ; The state for evaluating the if statement's statements is the state after evaluating the if statement's condition (side effects challenge)
-         (evaluate-statement-list->state
-          (list (get-if-then arglist))
-          (get-state-from-pair eval-ifcond)
-          cfuncsinstance))
-
+         (evaluate-statement-list->state (list (get-if-then arglist))
+                                         (get-state-from-pair eval-ifcond)
+                                         cfuncsinstance))
         ((has-else? arglist)
-         (evaluate-statement-list->state
-          (list (get-if-else arglist))
-          (get-state-from-pair eval-ifcond)
-          cfuncsinstance))
-
-        ; If the if condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
+         (evaluate-statement-list->state (list (get-if-else arglist))
+                                         (get-state-from-pair eval-ifcond)
+                                         cfuncsinstance))
         (else (get-state-from-pair eval-ifcond))))))
 
+; Checks if an arglist has an if-else branch
 (define get-if-else
   (lambda (arglist)
     (cond
       ((not (has-else? arglist)) (error "no else statement"))
       (else (get-args-after-if-else arglist)))))
 
+; Checks if an arglist has an else branch
 (define has-else?
   (lambda (arglist)
     (pair? (get-else-from-if-else arglist))))
@@ -424,34 +426,35 @@
        (evaluate-inner-try-statement arglist
                                      state
                                      (lambda (s)
-                                       (throw (G-remove-scope-from-state->state(evaluate-statement-list->state(get-finally-from-try arglist)
-                                                                                                              (G-add-empty-scope-to-state->state s)
-                                                                                                              cfuncsinstance))))
+                                       (throw (G-remove-scope-from-state->state (evaluate-statement-list->state (get-finally-from-try arglist)
+                                                                                                                (G-add-empty-scope-to-state->state s)
+                                                                                                                cfuncsinstance))))
                                      cfuncsinstance)))))
 
+; Evaluate an inner try statement
 (define evaluate-inner-try-statement
   (lambda (arglist state finally cfuncsinstance)
     (finally
-     (G-remove-scope-from-state->state
-      (evaluate-statement-list->state (get-statements-from-try arglist)
-                                      (G-add-empty-scope-to-state->state state)
-                                      (cfuncs-update-catch cfuncsinstance
-                                                           (lambda (s e)
-                                                             (finally
-                                                              (G-remove-scope-from-state->state
-                                                               (evaluate-statement-list->state
-                                                                (get-statements-from-catch (get-catch-from-try arglist))
-                                                                (G-push-state->state (get-exception-from-catch (get-catch-from-try arglist))
-                                                                                     e
-                                                                                     (G-add-empty-scope-to-state->state (G-remove-scope-from-state->state s)))
-                                                                cfuncsinstance))))))))))
+     (G-remove-scope-from-state->state (evaluate-statement-list->state (get-statements-from-try arglist)
+                                                                       (G-add-empty-scope-to-state->state state)
+                                                                       (cfuncs-update-catch cfuncsinstance
+                                                                                            (lambda (s e)
+                                                                                              (finally
+                                                                                               (G-remove-scope-from-state->state (evaluate-statement-list->state
+                                                                                                                                  (get-statements-from-catch (get-catch-from-try arglist))
+                                                                                                                                  (G-push-state->state (get-exception-from-catch (get-catch-from-try arglist))
+                                                                                                                                                       e
+                                                                                                                                                       (G-add-empty-scope-to-state->state (G-remove-scope-from-state->state s)))
+                                                                                                                                  cfuncsinstance))))))))))
 
+; Gets the catch statement from try
 (define get-catch-from-try
   (lambda (arglist)
     (cond
       ((null? (get-catch-wrapper arglist)) '())
       (else (get-inner-catch-statement (get-contents-of-catch arglist))))))
 
+; Gets the finally statement from try
 (define get-finally-from-try
   (lambda (arglist)
     (cond
@@ -474,28 +477,25 @@
      (lambda (break)
        (evaluate-recursive-while arglist state (cfuncs-update-break cfuncsinstance break))))))
 
+
+; Evaluate a while statement 
 (define evaluate-recursive-while
   (lambda (arglist state cfuncsinstance)
     (call/cc
      (lambda (endcontinue)
        (let* ([eval-while-cond (G-eval-atomic-statement->value_state (get-while-cond arglist) state cfuncsinstance)])
          (cond
-           ; If the while condition is true, evaluate the statements inside of it.
            ((get-value-from-pair eval-while-cond)
-            (evaluate-recursive-while
-             arglist
-             ; The state for evaluating the while statement's statements is the state after evaluating the while statement's condition (side effects challenge)
-             (evaluate-statement-list->state
-              (list (get-while-statement arglist))
-              (get-state-from-pair eval-while-cond)
+            (evaluate-recursive-while arglist
+                                      (evaluate-statement-list->state (list (get-while-statement arglist))
+                                                                      (get-state-from-pair eval-while-cond)
+                                                                      (cfuncs-update-continue cfuncsinstance
+                                                                                              (lambda (s)
+                                                                                                (endcontinue (evaluate-recursive-while arglist
+                                                                                                                                       s
+                                                                                                                                       cfuncsinstance)))))
 
-              ; s is a passed in state
-              (cfuncs-update-continue
-               cfuncsinstance
-               (lambda (s) (endcontinue (evaluate-recursive-while arglist s cfuncsinstance)))))
-
-             cfuncsinstance))
-
+                                      cfuncsinstance))
            ; If the while condition is false, return '() for the return value, and also return the updated state after evaluating the condition (side effects challenge)
            (else (get-state-from-pair eval-while-cond))))))))
 
@@ -531,18 +531,24 @@
   (lambda (value state)
     (let* ([cn (cadr value)])
       (cond
-        (else (list (list 'classname cn) (G-eval-class-closure->state cn state)))))))
+        (else (list (list 'classname cn)
+                    (G-eval-class-closure->state cn state)))))))
 
 
 ; Pushes the declaration statement to the state
 (define declare-var->state
   (lambda (name state)
-    (initialize-var->state name '() state)))
+    (initialize-var->state name empty-value-for-declare state)))
+
+(define empty-value-for-declare '())
 
 ; Pushes and initializes the variable to the state
 (define initialize-var->state
   (lambda (name value state)
-    (cons (append-head-scope-to-scope (list (list name) (list value)) (get-top-scope state)) (get-tail-scope state))))
+    (cons (append-head-scope-to-scope (list (list name)
+                                            (list value))
+                                      (get-top-scope state))
+          (get-tail-scope state))))
 
 ; Determines if an argument is a declare (and not an assign).
 (define only-declare?
@@ -584,6 +590,7 @@
   (lambda (arglist)
     (eq? (get-value-from-pair (get-value-from-pair arglist)) 'classname)))
 
+; checks if an arglist is a dot-expression
 (define dot-expr?
   (lambda (arglist)
     (cond
@@ -597,20 +604,25 @@
     (arglist-tail arglist)))
 
 
+; evaluates a dotted expression
 (define evaluate-dotted-expr->value_state
   (lambda (arglist state cfuncsinstance)
     (cond
       ((eq? (dotted-class-instance arglist) 'this)
-       (list (get-value-from-pair
-              (G-value-lookup->value_state (dotted-class-call arglist) (get-valid-this-call-state state) cfuncsinstance))
+       (list (get-value-from-pair (G-value-lookup->value_state (dotted-class-call arglist)
+                                                               (get-valid-this-call-state state)
+                                                               cfuncsinstance))
              state))
       ((eq? (dotted-class-instance arglist) 'super)
-       (list (get-value-from-pair
-              (G-value-lookup->value_state (dotted-class-call arglist) (get-tail-scope (get-valid-this-call-state state)) cfuncsinstance))
+       (list (get-value-from-pair (G-value-lookup->value_state (dotted-class-call arglist)
+                                                               (get-tail-scope (get-valid-this-call-state state))
+                                                               cfuncsinstance))
              state))
-      (else (list (get-value-from-pair
-                  (G-value-lookup->value_state (dotted-class-call arglist) (G-get-instance-state (dotted-class-instance arglist) state) cfuncsinstance))
-                 state)))))
+      (else
+       (list (get-value-from-pair (G-value-lookup->value_state (dotted-class-call arglist)
+                                                               (G-get-instance-state (dotted-class-instance arglist) state)
+                                                               cfuncsinstance))
+             state)))))
 
 ; FUNCALL Section
 
@@ -682,31 +694,35 @@
                                                            (get-state-from-pair evaluate-assign)) cfuncsinstance))
         (else (error "variable undeclared args:" arglist "state" state))))))
 
+; Evaluates a dotted assignment expression
 (define evaluate-dotted-assign->value_state
   (lambda (dot-expression assign-value state cfuncsinstance)
     (cond
       ((eq? (dotted-class-instance dot-expression) 'super)
-       (let* ([evaled-assign (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (get-tail-scope (get-valid-this-call-state state)) cfuncsinstance)]
+       (let* ([evaled-assign (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value)
+                                                         (get-tail-scope (get-valid-this-call-state state))
+                                                         cfuncsinstance)]
               ; tail-scope is called to remove .cf pointer
               [evaled-state (get-state-from-pair evaled-assign)]
               [evaled-value (get-value-from-pair evaled-assign)])
-  
-       (list evaled-value (G-merge-states->state state evaled-state))))
+         (list evaled-value (G-merge-states->state state evaled-state))))
+      
       ((eq? (dotted-class-instance dot-expression) 'this)
-       (let* ([evaled-assign (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (get-valid-this-call-state state) cfuncsinstance)]
+       (let* ([evaled-assign (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value)
+                                                         (get-valid-this-call-state state)
+                                                         cfuncsinstance)]
               ; tail-scope is called to remove .cf pointer
               [evaled-state (get-state-from-pair evaled-assign)]
               [evaled-value (get-value-from-pair evaled-assign)])
-  
-       (list evaled-value (G-merge-states->state state evaled-state))))
+         (list evaled-value (G-merge-states->state state evaled-state))))
+      
       (else
        (update-class-instance (dotted-class-instance dot-expression)
-                              (extract-new-class-instance-state (get-state-from-pair
-                               (G-eval-assign->value_state `(= ,(dotted-class-call dot-expression) ,assign-value) (construct-dotted-state dot-expression state) cfuncsinstance)))
-                              state)))))
-
-
-                  
+                              (extract-new-class-instance-state (get-state-from-pair G-eval-assign->value_state
+                                                                                     `(= ,(dotted-class-call dot-expression) ,assign-value)
+                                                                                     (construct-dotted-state dot-expression state)
+                                                                                     cfuncsinstance)))
+       state))))
 
 ; Determines whether or not an assignment argument is reached
 (define G-assign?
@@ -739,12 +755,14 @@
       ((eq? (length arglist) 2)
        (eval-expr-uni->value_state (get-op-from-expr arglist)
                                    (get-arg1-from-expr arglist)
-                                   state cfuncsinstance))
+                                   state
+                                   cfuncsinstance))
       ((eq? (length arglist) 3)
        (eval-expr-multi->value_state (get-op-from-expr arglist)
                                      (get-arg1-from-expr arglist)
                                      (get-arg2-from-expr arglist)
-                                     state cfuncsinstance))
+                                     state
+                                     cfuncsinstance))
       (else (error "invalid number of arguments")))))
 
 
@@ -821,7 +839,8 @@
         ; We return a (value, state), hence the cons for the value and the state
         ; The value is derived from applying the operator on arg1 and arg2
         ; To handle side effects, the state passed into arg2 is the state after evaluating arg1
-        ((and (eq? (G-type-lookup arg1 state cfuncsinstance) 'boolean) (eq? (G-type-lookup arg2 state cfuncsinstance) 'boolean))
+        ((and (eq? (G-type-lookup arg1 state cfuncsinstance) 'boolean)
+              (eq? (G-type-lookup arg2 state cfuncsinstance) 'boolean))
          (cons ((boolean-operator-to-function-multi op)
                 (get-value-from-pair lookup-arg1)
                 (get-value-from-pair lookup-arg2))
@@ -835,7 +854,8 @@
 (define eval-math-expr-multi->value_state
   (lambda (op arg1 arg2 state cfuncsinstance)
     (cond
-      ((and (eq? (G-type-lookup arg1 state cfuncsinstance) 'integer) (eq? (G-type-lookup arg2 state cfuncsinstance) 'integer))
+      ((and (eq? (G-type-lookup arg1 state cfuncsinstance) 'integer)
+            (eq? (G-type-lookup arg2 state cfuncsinstance) 'integer))
        (eval-math-expr-int-multi->value_state op arg1 arg2 state cfuncsinstance))
       (else (error "invalid types for math expression")))))
 
