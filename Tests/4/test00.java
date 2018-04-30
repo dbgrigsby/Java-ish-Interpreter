@@ -10,10 +10,13 @@ class A {
      a = a + 1;
      return this;
   }
+  function Start() {
+    return X().Y();
+  }
 
   static function main() {
     var obj = new A();
-    obj.X().Y();
+    obj.Start();
 
     return obj.a;
   }

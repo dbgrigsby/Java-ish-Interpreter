@@ -153,21 +153,24 @@
                                      cfuncsinstance)]
 
               ; TODO: left off on line below
-              ;[evaled-instance (list '(classname Test) (get-instance-state (get-value-from-pair evaled-instance-pair)))]
               [evaled-instance (get-value-from-pair evaled-instance-pair)]
-              ;[debug (debug-func? list? evaled-instance evaled-instance-pair state name)]
-              [evaled-state (push-variable-as-literal->state '.temp evaled-instance (get-state-from-pair evaled-instance-pair))]
-              [dottedname (list '.temp (dotted-class-call (arglist-dot name)))]
+              [evaled-state (push-variable-as-literal->state (find-highest-var name) evaled-instance (get-state-from-pair evaled-instance-pair))]
+              [dottedname (list (find-highest-var name) (dotted-class-call (arglist-dot name)))]
               [evaled-function (eval-function-post-name-eval (dotted-class-call dottedname)
                                      args
                                      evaled-state
                                      (construct-dotted-state dottedname evaled-state)
                                      (get-current-class (construct-dotted-state dottedname evaled-state) cfuncsinstance)
-                                     #t
+                                     #f
                                      cfuncsinstance)]
               [function-return (get-value-from-pair evaled-function)]
-              [function-state (get-state-from-pair evaled-function)])
-         (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))
+              [function-state (get-state-from-pair evaled-function)]
+              [debg (delete-this state)]
+              [debug2 (delete-this2 function-state)]
+              [debug3 (delete-this (G-merge-states->state state function-state))])
+         (cond
+           ((eq? (dotted-class-instance dottedname) '.temp) (list function-return (G-merge-states->state state function-state)))
+            (else (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))))
       ((dot-expr? name) 
        (let* ([dottedname (arglist-dot name)]
               [evaled-function (eval-function-post-name-eval (dotted-class-call dottedname)
@@ -180,7 +183,29 @@
               [function-return (get-value-from-pair evaled-function)]
               [function-state (get-state-from-pair evaled-function)])
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) state))))
+
       (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance)))))
+
+
+(define delete-this2
+  (lambda (arg) arg))
+;(trace delete-this2)
+(define delete-this
+  (lambda (arg) arg))
+;(trace delete-this)
+
+(define find-highest-var
+  (lambda (dotexpr)
+    (cond
+      ((atom? dotexpr) '.temp)
+      ((list? (dotted-class-instance (arglist-dot dotexpr)))
+       (cond
+         ((eq? (car (dotted-class-instance (arglist-dot dotexpr))) 'new) '.temp)
+         (else (find-highest-var (dotted-class-instance (arglist-dot dotexpr))))))
+      ((eq? 'this (dotted-class-instance (arglist-dot dotexpr))) '.temp)
+      ((eq? 'super (dotted-class-instance (arglist-dot dotexpr))) '.temp)
+      ((eq? 'funcall (arglist-head dotexpr)) '.temp)
+      (else (dotted-class-instance (arglist-dot dotexpr))))))
 
 (define get-base-class
   (lambda (state cfuncsinstance)
@@ -251,11 +276,8 @@
         function-state
         (G-pop-to-stack-divider->state
          (get-state-from-pair
-          (delete-this
-          evaluate-function-call))))))))
-(define delete-this
-  (lambda (arg) arg))
-;(trace delete-this)
+          evaluate-function-call)))))))
+
 ;(trace eval-function-post-name-eval)
 (define evaluate-actual-args-for-state
   (lambda (actual state cfuncsinstance)
@@ -297,7 +319,7 @@
  (lambda (instancename state)
    (append (G-get-instance-state instancename state)
            (G-pop-to-class-level->state state))))
-;(trace add-class-instance-to-state)
+
 
 (define extract-new-class-instance-state
   (lambda (state)
@@ -1128,6 +1150,7 @@
   (lambda (orig-state mod-state)
     (cond
       ((null? mod-state) orig-state)
+      ((null? orig-state) '())
       (else (cons (get-top-scope mod-state)
                   (merge (get-tail-scope orig-state)(get-tail-scope mod-state)))))))
 
@@ -1187,7 +1210,9 @@
 (define G-eval-class-closure->state
   (lambda (classname state)
     (cond
-      ((null? (G-get-class-superclass classname state)) (evaluate-closure->state classname state))
+      ;push-variable as literal code is wrong, it produces an extra scope
+      ;looks wrong, don't touch
+      ((null? (G-get-class-superclass classname state)) (list (get-top-scope (evaluate-closure->state classname state))))
       (else (cons (get-top-scope
                    (evaluate-closure->state classname state)) (G-eval-class-closure->state (G-get-class-superclass classname state) state))))))
 
