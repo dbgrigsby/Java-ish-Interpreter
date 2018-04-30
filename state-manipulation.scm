@@ -882,17 +882,22 @@
       ((G-initialized? value state) (cons (variable-value-lookup value state) (list state)))
       (else (error "unsupported value lookup" value "state" state)))))
 
+; check if an arglist is a super-expression
 (define super-expr?
   (lambda (arglist)
     (equal? arglist 'super)))
 
+; check if an arglist is a this-expression
 (define this-expr?
   (lambda (arglist)
     (equal? arglist 'this)))
 
+; evaluate a this-expression
 (define handle-this-expr
   (lambda (state)
-    (list (list `(classname ,(get-base-class state empty-cfuncs)) (G-pop-to-stack-divider->state (extract-new-class-instance-state state))) state)))
+    (list (list `(classname ,(get-base-class state empty-cfuncs))
+                (G-pop-to-stack-divider->state (extract-new-class-instance-state state)))
+          state)))
 
 ; Determines whether a boolean in java boolean notation was encountered
 (define java-boolean?
@@ -975,9 +980,8 @@
 ; Gets the head of a scope (e.g. ((a) (b)) is the head of ((a b c) (b d e)))
 (define get-head-scope
   (lambda (state)
-    (list
-     (list (get-scope-variable-head state))
-     (list (get-scope-value-head state)))))
+    (list (list (get-scope-variable-head state))
+          (list (get-scope-value-head state)))))
 
 ; Gets the tail of a state (e.g. state is ((a b c) (1 2 3)) tail is ((b c) (2 3)))
 (define get-tail-state
@@ -1023,7 +1027,7 @@
       ; If the state is empty, push to the state
       ((state-empty? state)
        (list (list (list variable)
-             (list number))))
+                   (list number))))
       ; If it's been declared before, update the variable, if not, add it to the state
       ((G-declared? variable state) (update-variable variable number state))
       (else (cons (list (cons variable (get-variable-section-state (get-top-scope state)))
@@ -1054,11 +1058,10 @@
 ; yields ((a b c d) (1 2 3 4)))
 (define append-head-scope-to-scope
   (lambda (head-state tail-state)
-    (list
-     (append (list (get-scope-variable-head head-state))
-             (get-variable-section-state tail-state))
-     (append (list (get-scope-value-head head-state))
-             (get-value-section-state tail-state)))))
+    (list (append (list (get-scope-variable-head head-state))
+                  (get-variable-section-state tail-state))
+          (append (list (get-scope-value-head head-state))
+                  (get-value-section-state tail-state)))))
 
 ; looks up the value of a variable in the state
 ; returns the value of the variable or an error if the variable was not found
@@ -1105,10 +1108,13 @@
       ((null? desiredclass) (pop-scope-to-function-default fn state))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
        (cond
-         ((eq? (car (get-value-section-state (get-top-scope state))) desiredclass) state)
+         ((eq? (get-valuesection-value (get-value-section-state (get-top-scope state))) desiredclass)
+          state)
          (else (G-pop-scope-to-function-or-class->state fn desiredclass (get-tail-scope state)))))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
       (else (G-pop-scope-to-function-or-class->state fn desiredclass (get-tail-scope state))))))
+
+(define get-valuesection-value car)
 
 (define G-pop-scope-to-function->state
   (lambda (fn desiredclass state)
@@ -1117,11 +1123,13 @@
       ((null? desiredclass) (pop-scope-to-function-default fn state))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
        (cond
-         ((eq? (car (get-value-section-state (get-top-scope state))) desiredclass) (pop-scope-to-function-default fn state))
+         ((eq? (car (get-value-section-state (get-top-scope state))) desiredclass)
+          (pop-scope-to-function-default fn state))
          (else (G-pop-scope-to-function->state fn desiredclass (get-tail-scope state)))))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
       (else (G-pop-scope-to-function->state fn desiredclass (get-tail-scope state))))))
 
+; Pops a scope to a givenfunction
 (define pop-scope-to-function-default
   (lambda (fn state)
     (cond
@@ -1130,29 +1138,38 @@
       (else (pop-scope-to-function-default fn (get-tail-scope state))))))
 
 
+; shortmerges an origin state to a modified state
 (define G-shortmerge-states->state
   (lambda (origin-state mod-state)
-      (reverse (shortmerge (reverse origin-state) (reverse mod-state)))))
+    (reverse (shortmerge (reverse origin-state)
+                         (reverse mod-state)))))
 
 (define shortmerge
   (lambda (orig-state mod-state)
     (cond
-      ((null? orig-state) '())
+      ((null? orig-state) empty-orig-state)
       (else (cons (get-top-scope mod-state)
-                  (shortmerge (get-tail-scope orig-state)(get-tail-scope mod-state)))))))
+                  (shortmerge (get-tail-scope orig-state)
+                              (get-tail-scope mod-state)))))))
+
 ; Merges an original state with the state after a funciton call,
 ; assumes that the function call state has smaller airty than the original state
 (define G-merge-states->state
   (lambda (origin-state mod-state)
-      (reverse (merge (reverse origin-state) (reverse mod-state)))))
+    (reverse (merge (reverse origin-state)
+                    (reverse mod-state)))))
+
 ; merges two reversed states
 (define merge
   (lambda (orig-state mod-state)
     (cond
       ((null? mod-state) orig-state)
-      ((null? orig-state) '())
+      ((null? orig-state) empty-orig-state)
       (else (cons (get-top-scope mod-state)
-                  (merge (get-tail-scope orig-state)(get-tail-scope mod-state)))))))
+                  (merge (get-tail-scope orig-state)
+                         (get-tail-scope mod-state)))))))
+
+(define empty-orig-state '())
 
 ; Add arguments to state
 (define G-add-arguments-to-state->state
@@ -1160,7 +1177,10 @@
     (cond
       ((null? arg-namelist) state)
       ((not (eq? (length arg-namelist) (length value-list))) (error "Arity mis-match between values and argument names"))
-      (else (cons (concatenate-scopes (list arg-namelist value-list) (car initstate)) state)))))
+      (else (cons (concatenate-scopes (list arg-namelist value-list) (get-initstate-value initstate))
+                  state)))))
+
+(define get-initstate-value car)
 
 ; Merges two scopes into a single scope (e.g. ((a b) (1 2)) and ((c d) (3 4)) yeilds ((a b c d) (1 2 3 4)))
 (define concatenate-scopes
@@ -1179,6 +1199,7 @@
       ((not (list? state)) (error "state is void"))
       (else (cons `((.sf) (,name)) state)))))
 
+; Determines if a state has a stack divider in it
 (define G-state-has-stack-divider?
   (lambda (state)
     (cond
@@ -1207,6 +1228,7 @@
 ;------------------------------------------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------------------------
 
+; Evaluates a class closure 
 (define G-eval-class-closure->state
   (lambda (classname state)
     (cond
@@ -1216,24 +1238,28 @@
       (else (cons (get-top-scope
                    (evaluate-closure->state classname state)) (G-eval-class-closure->state (G-get-class-superclass classname state) state))))))
 
+; Evaluates a closure of a class (given a classname) and returns the state after evaluation
 (define evaluate-closure->state
   (lambda (classname state)
     (push-variable-as-literal->state '.class
                                      classname
-                                     (evaluate-closure-statement-list->state (G-get-class-closure classname state) initstate empty-cfuncs))))
+                                     (evaluate-closure-statement-list->state (G-get-class-closure classname state)
+                                                                             initstate
+                                                                             empty-cfuncs))))
 
+; Evaluates a list of statements in a closure
 (define evaluate-closure-statement-list->state
   (lambda (program state cfuncsinstance)
     (cond
       ((null? program) state)
       ((not (list? program)) (error "Invalid program syntax"))
       ((pair? (program-head program))
-       (evaluate-closure-statement-list->state
-        (program-tail program)
-        (evaluate-closure-statement->state (program-head program) state cfuncsinstance)
-        cfuncsinstance))
+       (evaluate-closure-statement-list->state (program-tail program)
+                                               (evaluate-closure-statement->state (program-head program) state cfuncsinstance)
+                                               cfuncsinstance))
       (else (error "Invalid statement list syntax")))))
 
+; Delegates the appropriate evaluation function for a closure statement
 (define evaluate-closure-statement->state
   (lambda (arglist state cfuncsinstance)
     (cond
