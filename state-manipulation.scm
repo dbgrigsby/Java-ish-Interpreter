@@ -191,12 +191,14 @@
       ((atom? dotexpr) '.temp)
       ((list? (dotted-class-instance (arglist-dot dotexpr)))
        (cond
-         ((eq? (car (dotted-class-instance (arglist-dot dotexpr))) 'new) '.temp)
+         ((eq? (get-dotted-head (dotted-class-instance (arglist-dot dotexpr))) 'new) '.temp)
          (else (find-highest-var (dotted-class-instance (arglist-dot dotexpr))))))
       ((eq? 'this (dotted-class-instance (arglist-dot dotexpr))) '.temp)
       ((eq? 'super (dotted-class-instance (arglist-dot dotexpr))) '.temp)
       ((eq? 'funcall (arglist-head dotexpr)) '.temp)
       (else (dotted-class-instance (arglist-dot dotexpr))))))
+
+(define get-dotted-head car)
 
 ; Gets the case class a state is in
 (define get-base-class
@@ -218,11 +220,13 @@
       ((null? currentclass) default-currentclass)
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
        (cond
-         ((and (eq? (car (get-value-section-state (get-top-scope state))) currentclass)
+         ((and (eq? (get-value-section-top-head (get-value-section-state (get-top-scope state))) currentclass)
                (G-initialized? '.class (get-tail-scope state)))
           (get-value-from-pair (G-value-lookup->value_state '.class (get-tail-scope state) empty-cfuncs)))
          (else (get-super-class currentclass (get-tail-scope state)))))
       (else (get-super-class currentclass (get-tail-scope state))))))
+
+(define get-value-section-top-head car)
 
 
 (define default-currentclass '())
@@ -523,10 +527,12 @@
 ; value is a list: e.g. (new A). Prereq: the name of the instance has not been declared in the current stack frame
 (define get-instance-initialization-value
   (lambda (value state)
-    (let* ([cn (cadr value)])
+    (let* ([cn (get-instance-init-value-head value)])
       (cond
         (else (list (list 'classname cn)
                     (G-eval-class-closure->state cn state)))))))
+
+(define get-instance-init-value-head cadr)
 
 
 ; Pushes the declaration statement to the state
@@ -1137,11 +1143,13 @@
       ((null? desiredclass) (pop-scope-to-function-default fn state))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
        (cond
-         ((eq? (car (get-value-section-state (get-top-scope state))) desiredclass)
+         ((eq? (get-value-popped-head (get-value-section-state (get-top-scope state))) desiredclass)
           (pop-scope-to-function-default fn state))
          (else (G-pop-scope-to-function->state fn desiredclass (get-tail-scope state)))))
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) fn) state)
       (else (G-pop-scope-to-function->state fn desiredclass (get-tail-scope state))))))
+
+(define get-value-popped-head car)
 
 ; Pops a scope to a givenfunction
 (define pop-scope-to-function-default
