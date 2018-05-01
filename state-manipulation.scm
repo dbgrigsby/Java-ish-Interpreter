@@ -118,10 +118,12 @@
                                    state)))))
 
 
+; Evaluates a function
 (define G-eval-function->value_state
   (lambda (name args state cfuncsinstance)
     (cond
-      ((and (dot-expr? name) (eq? (dotted-class-instance (arglist-dot name)) 'this))
+      ((and (dot-expr? name)
+            (eq? (dotted-class-instance (arglist-dot name)) 'this))
        (let* ([evaled-function (eval-function-post-name-eval (dotted-class-call (arglist-dot name))
                                                              args
                                                              state
@@ -131,7 +133,7 @@
                                                              cfuncsinstance)]
               [function-return (get-value-from-pair evaled-function)]
               [function-state (get-state-from-pair evaled-function)])
-       (list function-return function-state)))
+         (list function-return function-state)))
       ((and (dot-expr? name) (eq? (dotted-class-instance (arglist-dot name)) 'super))
        (eval-function-post-name-eval (dotted-class-call (arglist-dot name))
                                      args
@@ -147,40 +149,38 @@
       ; dotted-class-instance: 'a (the name of the instance
       ; dottedname: (a f) where f is the name of the call and a is the object
       ((and (dot-expr? name) (list? (dotted-class-instance (arglist-dot name))))
-       (let* ([evaled-instance-pair (G-eval-atomic-statement->value_state
-                                     (dotted-class-instance (arglist-dot name))
-                                     state
-                                     cfuncsinstance)]
-
-              ; TODO: left off on line below
+       (let* ([evaled-instance-pair (G-eval-atomic-statement->value_state (dotted-class-instance (arglist-dot name))
+                                                                          state
+                                                                          cfuncsinstance)]
               [evaled-instance (get-value-from-pair evaled-instance-pair)]
               [evaled-state (push-variable-as-literal->state (find-highest-var name) evaled-instance (get-state-from-pair evaled-instance-pair))]
               [dottedname (list (find-highest-var name) (dotted-class-call (arglist-dot name)))]
               [evaled-function (eval-function-post-name-eval (dotted-class-call dottedname)
-                                     args
-                                     evaled-state
-                                     (construct-dotted-state dottedname evaled-state)
-                                     (get-current-class (construct-dotted-state dottedname evaled-state) cfuncsinstance)
-                                     #f
-                                     cfuncsinstance)]
+                                                             args
+                                                             evaled-state
+                                                             (construct-dotted-state dottedname evaled-state)
+                                                             (get-current-class (construct-dotted-state dottedname evaled-state) cfuncsinstance)
+                                                             #f
+                                                             cfuncsinstance)]
               [function-return (get-value-from-pair evaled-function)]
               [function-state (get-state-from-pair evaled-function)])
          (cond
            ((eq? (dotted-class-instance dottedname) '.temp) (list function-return (G-merge-states->state state function-state)))
-            (else (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))))
+           (else (list function-return
+                       (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))))
       ((dot-expr? name) 
        (let* ([dottedname (arglist-dot name)]
               [evaled-function (eval-function-post-name-eval (dotted-class-call dottedname)
-                                     args
-                                     state
-                                     (construct-dotted-state dottedname state)
-                                     (get-current-class (construct-dotted-state dottedname state) cfuncsinstance)
-                                     #t
-                                     cfuncsinstance)]
+                                                             args
+                                                             state
+                                                             (construct-dotted-state dottedname state)
+                                                             (get-current-class (construct-dotted-state dottedname state) cfuncsinstance)
+                                                             #t
+                                                             cfuncsinstance)]
               [function-return (get-value-from-pair evaled-function)]
               [function-state (get-state-from-pair evaled-function)])
          (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) state))))
-
+      
       (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance)))))
 
 
