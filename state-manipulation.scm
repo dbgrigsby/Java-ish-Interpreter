@@ -283,21 +283,27 @@
   (lambda (actual state cfuncsinstance)
     (cond
       ((null? actual) state)
-      (else (evaluate-actual-args-for-state (cdr actual)
-                                            (get-state-from-pair (G-eval-atomic-statement->value_state (car actual)
+      (else (evaluate-actual-args-for-state (rest-of-args actual)
+                                            (get-state-from-pair (G-eval-atomic-statement->value_state (head-of-args actual)
                                                                                                        state
                                                                                                        cfuncsinstance))
                                             cfuncsinstance)))))
 
+; Evaluates arguments
 (define evaluate-actual-args
   (lambda (actual state cfuncsinstance)
     (cond
       ((null? actual) actual)
       (else
-       (let* ([value-lookup (G-value-lookup->value_state (car actual) state cfuncsinstance)])
+       (let* ([value-lookup (G-value-lookup->value_state (head-of-args actual) state cfuncsinstance)])
          (cons
           (get-value-from-pair value-lookup)
-          (evaluate-actual-args (cdr actual) (get-state-from-pair value-lookup) cfuncsinstance)))))))
+          (evaluate-actual-args (rest-of-args actual)
+                                (get-state-from-pair value-lookup)
+                                cfuncsinstance)))))))
+
+(define head-of-args car)
+(define rest-of-args cdr)
 
 ;------------------------------------------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------------------------
@@ -307,30 +313,37 @@
 
 ; Dot functions section
 
+; Evaluates a dotted function
 (define evaluate-dotted-function-name
   (lambda (arglist state)
     (dotted-class-call arglist)))
 
+; constructs a dotted state
 (define construct-dotted-state
   (lambda (dotexpr state)
     (add-class-instance-to-state (dotted-class-instance dotexpr) state)))
 
+; Adds a class instance to a state
 (define add-class-instance-to-state
  (lambda (instancename state)
    (append (G-get-instance-state instancename state)
            (G-pop-to-class-level->state state))))
 
-
+; extract a new class instance
 (define extract-new-class-instance-state
   (lambda (state)
     (reverse (extract-new-class-instance-state-sub (get-tail-scope (reverse state))))))
 
+; extrats a new class instance from a state
 (define extract-new-class-instance-state-sub
  (lambda (state)
    (cond
-     ((null? state) '())
-     ((is-top-scope-class-divider? state) '())
-     (else (cons (get-top-scope state) (extract-new-class-instance-state-sub (get-tail-scope state)))))))
+     ((null? state) empty-extraction-state)
+     ((is-top-scope-class-divider? state) empty-extraction-state)
+     (else (cons (get-top-scope state)
+                 (extract-new-class-instance-state-sub (get-tail-scope state)))))))
+
+(define empty-extraction-state '())
 
 ; Updates a class instance with a new instance state
 (define update-class-instance
