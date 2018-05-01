@@ -164,10 +164,7 @@
                                      #f
                                      cfuncsinstance)]
               [function-return (get-value-from-pair evaled-function)]
-              [function-state (get-state-from-pair evaled-function)]
-              [debg (delete-this state)]
-              [debug2 (delete-this2 function-state)]
-              [debug3 (delete-this (G-merge-states->state state function-state))])
+              [function-state (get-state-from-pair evaled-function)])
          (cond
            ((eq? (dotted-class-instance dottedname) '.temp) (list function-return (G-merge-states->state state function-state)))
             (else (list function-return (update-class-instance (dotted-class-instance dottedname) (extract-new-class-instance-state function-state) evaled-state))))))
@@ -187,13 +184,7 @@
       (else (eval-function-post-name-eval name args state state default-currentclass #t cfuncsinstance)))))
 
 
-(define delete-this2
-  (lambda (arg) arg))
-;(trace delete-this2)
-(define delete-this
-  (lambda (arg) arg))
-;(trace delete-this)
-
+; Finds the highest rightmost variable in a chained dotted expression
 (define find-highest-var
   (lambda (dotexpr)
     (cond
@@ -207,19 +198,23 @@
       ((eq? 'funcall (arglist-head dotexpr)) '.temp)
       (else (dotted-class-instance (arglist-dot dotexpr))))))
 
+; Gets the case class a state is in
 (define get-base-class
   (lambda (state cfuncsinstance)
     (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))
+
+; Gets the current class a state is in
 (define get-current-class
   (lambda (state cfuncsinstance)
     (cond
       ((G-initialized? '.this state) (get-value-from-pair (G-value-lookup->value_state '.this state cfuncsinstance)))
       (else (get-value-from-pair (G-value-lookup->value_state '.class state cfuncsinstance))))))
 
+; Gets a superclass for a current class in a state
 (define get-super-class
   (lambda (currentclass state)
-    (cond
-      ((null? state) '())
+    (cond 
+      ((null? state) default-currentclass)
       ((null? currentclass) default-currentclass)
       ((declared-in-scope? (get-variable-section-state (get-top-scope state)) '.class)
        (cond
@@ -232,6 +227,7 @@
 
 (define default-currentclass '())
 
+; Evaluate the actual function after the name as been evaluated
 (define eval-function-post-name-eval
   (lambda (name args state function-state current-class preserve-current-class cfuncsinstance)
     (let* ([super-popped-state (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state current-class
