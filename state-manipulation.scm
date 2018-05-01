@@ -234,49 +234,34 @@
 
 (define eval-function-post-name-eval
   (lambda (name args state function-state current-class preserve-current-class cfuncsinstance)
-    (let* ([super-popped-state (G-add-empty-scope-to-state->state
-                                (G-push-stack-divider-to-state->state current-class
-                                                                      (G-pop-scope-to-function->state
-                                                                       name
-                                                                       (if preserve-current-class
-                                                                           current-class
-                                                                           (get-super-class current-class state))
-                                                                       function-state)))]
-           [popped-state 
-            (push-variable-as-literal->state '.this
-                                             (if preserve-current-class
-                                                 current-class
-                                                 (get-super-class current-class state))
-                                             (G-add-empty-scope-to-state->state
-                                              (G-push-stack-divider-to-state->state current-class
-                                                                                    (G-pop-scope-to-function-or-class->state
-                                                                                     name
-                                                                                     current-class
-                                                                                     function-state))))]
-           
+    (let* ([super-popped-state (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state current-class
+                                                                                                        (G-pop-scope-to-function->state name
+                                                                                                                                        (if preserve-current-class
+                                                                                                                                            current-class
+                                                                                                                                            (get-super-class current-class state))
+                                                                                                                                        function-state)))]
+           [popped-state (push-variable-as-literal->state '.this
+                                                          (if preserve-current-class
+                                                              current-class
+                                                              (get-super-class current-class state))
+                                                          (G-add-empty-scope-to-state->state (G-push-stack-divider-to-state->state current-class
+                                                                                                                                   (G-pop-scope-to-function-or-class->state name
+                                                                                                                                                                            current-class
+                                                                                                                                                                            function-state))))]
            [function-in-state (variable-value-lookup name super-popped-state)]
-           [evaluate-function-call
-            (evaluate-parse-tree-with-cfuncs->retval_state
-             (get-funcall-body function-in-state)
-             (G-add-arguments-to-state->state
-              (get-funcall-args function-in-state)
-              (evaluate-actual-args args state cfuncsinstance)
-              popped-state)
-             (cfuncs-wipe-all-but-catch
-              (cfuncs-update-catch
-               cfuncsinstance
-               (lambda (s e) ((cfuncs-catch cfuncsinstance)
-                              (G-merge-states->state
-                               function-state
-                               (G-pop-to-stack-divider->state s))
-                              e)))))])
-      (list
-       (get-value-from-pair evaluate-function-call)
-       (G-merge-states->state
-        function-state
-        (G-pop-to-stack-divider->state
-         (get-state-from-pair
-          evaluate-function-call)))))))
+           [evaluate-function-call (evaluate-parse-tree-with-cfuncs->retval_state (get-funcall-body function-in-state)
+                                                                                  (G-add-arguments-to-state->state (get-funcall-args function-in-state)
+                                                                                                                   (evaluate-actual-args args state cfuncsinstance)
+                                                                                                                   popped-state)
+                                                                                  (cfuncs-wipe-all-but-catch (cfuncs-update-catch cfuncsinstance
+                                                                                                                                  (lambda (s e)
+                                                                                                                                    ((cfuncs-catch cfuncsinstance)
+                                                                                                                                     (G-merge-states->state function-state
+                                                                                                                                                            (G-pop-to-stack-divider->state s))
+                                                                                                                                     e)))))])
+      (list (get-value-from-pair evaluate-function-call)
+            (G-merge-states->state function-state
+                                   (G-pop-to-stack-divider->state (get-state-from-pair evaluate-function-call)))))))
 
 ;(trace eval-function-post-name-eval)
 (define evaluate-actual-args-for-state
