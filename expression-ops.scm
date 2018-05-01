@@ -5,6 +5,7 @@
 #lang racket
 (provide (all-defined-out))
 
+; Checks if an expression is a a valid expression
 (define G-expr?
   (lambda (arglist)
     (cond
@@ -15,6 +16,7 @@
       
 (define get-op-from-expr car)
 
+; Checks to see if a math expression is encountered
 (define math-expr?
   (lambda (op)
     (cond
@@ -25,6 +27,7 @@
       ((eq? op '%) #t)
       (else #f))))
 
+; Checks to see if a boolean expression is encountered
 (define boolean-expr?
   (lambda (op)
     (cond
@@ -33,6 +36,7 @@
       ((eq? op '!) #t)
       (else #f))))
 
+; Checks to see if a comparing expression is encountered
 (define compare-expr?
   (lambda (op)
     (cond
@@ -44,8 +48,6 @@
       ((eq? op '>=) #t)
       (else #f))))
 
-
-
 ; Determines whether a boolean in java boolean notation was encountered
 (define java-boolean?
   (lambda (value)
@@ -54,7 +56,7 @@
       ((eq? value 'false) #t)
       (else #f))))
 
-
+; Converted a java boolean name to a scheme boolean name (e.g. true in java is #t in scheme)
 (define java-bool-to-scheme-bool
   (lambda (value)
     (cond
@@ -103,6 +105,7 @@
                       (or arg1 arg2)))
       (else (error "unsupported boolean expression")))))
 
+; Determines what type of operator we have
 (define compare-operator-to-function-multi
   (lambda (op)
     (cond

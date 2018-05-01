@@ -29,11 +29,9 @@
 
 (define cfuncs-wipe-all-but-catch
   (lambda (cfuncsinstance)
-    (cfuncs-update-break
-      (cfuncs-update-continue 
-        (cfuncs-update-return cfuncsinstance identity)
-         identity)
-      identity)))
+    (cfuncs-update-break (cfuncs-update-continue (cfuncs-update-return cfuncsinstance identity)
+                                                 identity)
+                         identity)))
 
 (define identity-catch
   (lambda (a b)
