@@ -11,7 +11,7 @@
 (require racket/trace)
 
 
-
+; State-empty? checks if an empty state is encountered, or if the state contains no more elements (empty)
 (define state-empty?
   (lambda (state)
     (cond
@@ -40,16 +40,16 @@
 
 
 
+; Evaluates a list of statements
 (define evaluate-statement-list->state
   (lambda (program state cfuncsinstance)
     (cond
       ((null? program) state)
       ((not (list? program)) (error "Invalid program syntax"))
       ((pair? (program-head program))
-       (evaluate-statement-list->state
-        (program-tail program)
-        (evaluate-statement->state (program-head program) state cfuncsinstance)
-        cfuncsinstance))
+       (evaluate-statement-list->state (program-tail program)
+                                       (evaluate-statement->state (program-head program) state cfuncsinstance)
+                                       cfuncsinstance))
       (else (error "Invalid statement list syntax")))))
 
 ; Returns state updated after evaluating pair
@@ -102,12 +102,12 @@
 ;------------------------------------------------------------------------------------------------------------------
 
 ; Function definition section
-
 (define G-define-function->state
   (lambda (arglist state cfuncsinstance)
     (declare-function (get-function-name arglist) (get-function-formal-args arglist) (get-function-body arglist) state)))
 
 
+; evaluates a declare function
 (define declare-function
   (lambda (function-name function-args function-body state)
     (cond

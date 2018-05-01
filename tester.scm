@@ -11,9 +11,12 @@
     (if (eq? (interpret filename (findmain (parser filename))) expected-output)
         (string-append "Passed " filename)
         (string-append "Failed " filename
-          ", ! Expected output: " (if (number? expected-output) (number->string expected-output) (symbol->string expected-output))
-            ", Interpreter output: "  (if (number? (interpret filename (findmain (parser filename)))) (number->string (interpret filename (findmain (parser filename)))) (symbol->string
-                                                                                                                (interpret filename (findmain (parser filename)))))))))
+                       ", ! Expected output: " (if (number? expected-output)
+                                                   (number->string expected-output)
+                                                   (symbol->string expected-output))
+                       ", Interpreter output: "  (if (number? (interpret filename (findmain (parser filename))))
+                                                     (number->string (interpret filename (findmain (parser filename))))
+                                                     (symbol->string (interpret filename (findmain (parser filename)))))))))
 
 (define member*
   (lambda (x lis)
@@ -21,6 +24,7 @@
       ((null? lis) #f)
       ((not (list? lis)) (equal? x lis))
       (else (or (member* x (car lis)) (member* x (cdr lis)))))))
+
 (define findmain
   (lambda (parse-tree)
     (cond

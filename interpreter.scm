@@ -17,10 +17,12 @@
       (with-handlers ([exn:fail? error->handler])
         (show-parse-tree-output (evaluate-parse-tree->retval_state (get-main-code classname staticstate)
                                                                    staticstate))))))
+; Used as a debugging helper for testing our code.
 (define debug-call
   (lambda (filename classname)
     (let* ([staticstate (G-parsed-file-to-state->state (parser filename) initstate)])
     `(evaluate-parse-tree->retval_state ,(get-main-code classname staticstate) ,staticstate))))
+
 ; display the value from the parse tree output
 (define show-parse-tree-output
   (lambda (parse-tree-output)
@@ -40,8 +42,6 @@
 
 ; gets the code portion of a function closure (arglist + code)
 (define get-code-from-function-closure cadr)
-
-    
 
 (define append-main
   (lambda (program)
